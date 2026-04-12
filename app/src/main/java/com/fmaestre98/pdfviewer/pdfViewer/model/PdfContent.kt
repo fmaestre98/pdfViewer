@@ -1,0 +1,64 @@
+package com.fmaestre98.pdfviewer.pdfViewer.model
+
+import android.graphics.PointF
+import android.graphics.RectF
+import android.os.Parcelable
+import kotlinx.parcelize.Parcelize
+
+@Parcelize
+class PdfLine(
+    val id: Int,
+    val text: String,
+    val position: PointF,
+    val size: Size,
+    var relatedPosition: PointF = PointF(),
+    var relatedSize: Size = Size(0f, 0f),
+    val words: ArrayList<PdfWord> = arrayListOf(),
+    val rect: RectF = RectF(),
+): Parcelable
+
+@Parcelize
+class PdfWord(
+    val id: Int,
+    val lineId: Int,
+    val text: String,
+    val position: PointF,
+    val size: Size,
+    var relatedPosition: PointF = PointF(),
+    var relatedSize: Size = Size(0f, 0f),
+    val characters: ArrayList<PdfChar> = arrayListOf(),
+    val rect: RectF = RectF(),
+): Parcelable
+
+@Parcelize
+data class PdfChar(
+    val id: Int,
+    val lineId: Int,
+    val wordId: Int,
+    val text: String,
+    /**Y calculated from top position , (0,0) from top-left position*/
+    val topPosition: PointF,
+    /**Y calculated from bottom position , (0,0) from bottom-left position*/
+    val bottomPosition: PointF,
+    val size: Size,
+    val pageNumber: Int,
+    var relatedPosition: PointF = PointF(),
+    var relatedSize: Size = Size(0f, 0f),
+    val rect: RectF = RectF(),
+): Parcelable
+
+@Parcelize
+class Size(var width: Float = 0f, var height: Float = 0f): Parcelable {
+    fun set(width: Float, height: Float) {
+        this.width = width
+        this.height = height
+    }
+}
+
+@Parcelize
+data class Coordinates(
+    var startX: Double,
+    var startY: Double,
+    var endX: Double,
+    var endY: Double,
+) : Parcelable
