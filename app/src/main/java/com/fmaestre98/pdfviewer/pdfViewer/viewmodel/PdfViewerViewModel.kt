@@ -22,9 +22,7 @@ import javax.inject.Inject
  * Handles PDF loading, text extraction, page model loading, and TTS.
  */
 @HiltViewModel
-class PdfViewerViewModel @Inject constructor(
-    private val ttsManager: TtsManager
-) : ViewModel() {
+class PdfViewerViewModel  @Inject constructor(): ViewModel() {
     var loaderState by mutableStateOf(PdfLoaderState())
         private set
 
@@ -36,21 +34,6 @@ class PdfViewerViewModel @Inject constructor(
 
     private var pageRenderer: PdfPageRenderer? = null
 
-    init {
-        // Configurar callback para resaltar palabras
-        ttsManager.onWordHighlight = { word ->
-            interactiveState.currentReadingWord = word
-        }
-
-        // Configurar callback para errores de inicialización
-        ttsManager.onInitializationError = { error ->
-            interactiveState.setTtsAvailableExtra(false)
-        }
-
-        ttsManager.onInitializationSuccess = {
-            interactiveState.setTtsAvailableExtra(true)
-        }
-    }
 
     /**
      * Loads a PDF file and initializes the renderer.
@@ -93,15 +76,6 @@ class PdfViewerViewModel @Inject constructor(
             // Pass current page index for cleanup reference
             interactiveState.setPageModel(pageIndex, pageModel, navigationState.currentPageIndex)
             interactiveState.deactivateTextSelection()
-
-            // Si el modo karaoke está activo y es la página actual, hablar automáticamente
-            if (interactiveState.isKaraokeMode &&
-                navigationState.currentPageIndex == pageIndex &&
-                pageModel != null &&
-                interactiveState.isTtsAvailable
-            ) {
-                ttsManager.speakPage(pageModel)
-            }
         }
     }
 
@@ -124,7 +98,6 @@ class PdfViewerViewModel @Inject constructor(
         
         // Detener TTS si está activo al cambiar de página
         if (interactiveState.isKaraokeMode && navigationState.currentPageIndex != pageIndex) {
-            ttsManager.stop()
             interactiveState.currentReadingWord = null
         }
 
@@ -145,63 +118,12 @@ class PdfViewerViewModel @Inject constructor(
     fun getPageRenderer(): PdfPageRenderer? = pageRenderer
 
     /**
-     * Verifica la disponibilidad de TTS.
-     */
-    fun checkTtsAvailability() {
-        val available = ttsManager.isAvailable()
-        interactiveState.setTtsAvailableExtra(available)
-    }
-
-    /**
-     * Alterna el modo karaoke.
-     */
-    fun toggleKaraokeMode() {
-        val newMode = !interactiveState.isKaraokeMode
-        interactiveState.setKaraokeModeExtra(newMode)
-
-        if (newMode) {
-            // Iniciar modo karaoke
-            checkTtsAvailability()
-            if (interactiveState.isTtsAvailable) {
-                // Hablar la página actual si el modelo ya está cargado
-                val pageModel = interactiveState.getPageModel(navigationState.currentPageIndex)
-                if (pageModel != null) {
-                    ttsManager.speakPage(pageModel)
-                }
-            }
-        } else {
-            // Detener modo karaoke
-            ttsManager.stop()
-            interactiveState.currentReadingWord = null
-        }
-    }
-
-    /**
-     * Habla una página específica.
-     */
-    fun speakPage(pageModel: PageModel) {
-        if (interactiveState.isKaraokeMode && interactiveState.isTtsAvailable) {
-            ttsManager.speakPage(pageModel)
-        }
-    }
-
-    /**
-     * Detiene TTS.
-     */
-    fun stopTts() {
-        ttsManager.stop()
-        interactiveState.currentReadingWord = null
-        interactiveState.setKaraokeModeExtra(false)
-    }
-
-    /**
      * Cleans up resources.
      */
     override fun onCleared() {
         super.onCleared()
         // No destruimos el TtsManager aquí porque es un singleton
         // Se destruirá cuando la aplicación se cierre
-        ttsManager.stop()
         pageRenderer?.dispose()
         pageRenderer = null
         loaderState.dispose()

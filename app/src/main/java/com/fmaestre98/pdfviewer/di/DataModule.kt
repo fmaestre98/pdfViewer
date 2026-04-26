@@ -1,4 +1,4 @@
-package com.fmaestre98.pdfviewer
+package com.fmaestre98.pdfviewer.di
 
 import android.content.Context
 import dagger.Module

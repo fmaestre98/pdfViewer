@@ -1,3 +1,23 @@
 <resources>
     <string name="app_name">PdfViewer</string>
+
+    <!-- Home screen -->
+    <string name="home_title">Mi Biblioteca</string>
+    <string name="home_empty_title">Sin documentos</string>
+    <string name="home_empty_subtitle">Toca el botón + para agregar un PDF</string>
+    <string name="home_add_pdf">Agregar PDF</string>
+    <string name="home_pages_format">%d páginas</string>
+    <string name="home_page_progress">Página %1$d de %2$d</string>
+    <string name="home_delete">Eliminar</string>
+    <string name="home_delete_confirm_title">¿Eliminar documento?</string>
+    <string name="home_delete_confirm_message">Se eliminarán también los marcadores, resaltados y notas asociados.</string>
+    <string name="home_cancel">Cancelar</string>
+    <string name="home_pdf_added">PDF agregado a la biblioteca</string>
+    <string name="home_error_adding">Error al agregar el PDF</string>
+    <string name="home_error_loading">Error al cargar los documentos</string>
+
+    <!-- PDF reader -->
+    <string name="reader_error_file">No se pudo abrir el archivo</string>
+    <string name="reader_back">Atrás</string>
+    <string name="reader_page_indicator">%1$d / %2$d</string>
 </resources>
