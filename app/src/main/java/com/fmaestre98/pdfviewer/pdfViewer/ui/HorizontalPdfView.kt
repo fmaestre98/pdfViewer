@@ -51,7 +51,6 @@ import com.fmaestre98.pdfviewer.pdfViewer.overlay.PdfDebugOverlay
 import com.fmaestre98.pdfviewer.pdfViewer.overlay.ReadingOverlay
 import com.fmaestre98.pdfviewer.pdfViewer.overlay.TextSelectionOverlay
 import com.fmaestre98.pdfviewer.pdfViewer.overlay.HighlightOverlay
-import com.fmaestre98.pdfviewer.utils.shimmer
 import com.fmaestre98.pdfviewer.pdfViewer.overlay.TextSelectionMenu
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString

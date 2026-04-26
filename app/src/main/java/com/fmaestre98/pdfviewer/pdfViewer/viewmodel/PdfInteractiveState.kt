@@ -6,10 +6,10 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import com.fmaestre98.pdfviewer.pdfViewer.model.HighlightData
 import com.fmaestre98.pdfviewer.pdfViewer.model.PageModel
 import com.fmaestre98.pdfviewer.pdfViewer.model.PdfChar
 import com.fmaestre98.pdfviewer.pdfViewer.model.PdfWord
-import com.fmaestre98.pdfviewer.repository.HighlightData
 
 /**
  * State class for managing PDF viewer interactions.
