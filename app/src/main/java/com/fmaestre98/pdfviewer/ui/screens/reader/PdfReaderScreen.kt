@@ -123,19 +123,6 @@ fun PdfReaderScreen(
     }
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
-        topBar = {
-            TopAppBar(
-                title = { Text(stringResource(R.string.app_name)) },
-                navigationIcon = {
-                    IconButton(onClick = { onAction(PdfReaderAction.OnBackClick) }) {
-                        Icon(
-                            Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = stringResource(R.string.reader_back)
-                        )
-                    }
-                }
-            )
-        }
     ) { paddingValues ->
         Box(
             modifier = Modifier
