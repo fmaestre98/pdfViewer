@@ -5,10 +5,12 @@ import android.net.Uri
 import android.provider.OpenableColumns
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
@@ -16,10 +18,17 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.fmaestre98.pdfviewer.R
@@ -101,14 +110,19 @@ fun HomeScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(R.string.home_title)) }
+                title = { Text(stringResource(R.string.home_title)) },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                )
             )
         },
         floatingActionButton = {
             FloatingActionButton(onClick = onPickPdfClick) {
                 Icon(Icons.Default.Add, contentDescription = stringResource(R.string.home_add_pdf))
             }
-        }
+        },
+        containerColor = Color(0xFFF5E6D3) // Warm wallpaper color
     ) { paddingValues ->
         Box(
             modifier = Modifier
@@ -120,19 +134,21 @@ fun HomeScreen(
             } else if (state.books.isEmpty()) {
                 EmptyState(modifier = Modifier.align(Alignment.Center))
             } else {
+                val booksInRows = state.books.chunked(3)
+                
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                    contentPadding = PaddingValues(bottom = 88.dp, top = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     items(
-                        items = state.books,
-                        key = { it.uri }
-                    ) { book ->
-                        BookItem(
-                            book = book,
-                            onClick = { onAction(HomeAction.OnBookClick(book.uri)) },
-                            onDelete = { onAction(HomeAction.OnDeleteBook(book.uri)) }
+                        items = booksInRows,
+                        key = { it.first().uri }
+                    ) { rowBooks ->
+                        ShelfRow(
+                            books = rowBooks,
+                            onClick = { book -> onAction(HomeAction.OnBookClick(book.uri)) },
+                            onDelete = { book -> onAction(HomeAction.OnDeleteBook(book.uri)) }
                         )
                     }
                 }
@@ -162,46 +178,138 @@ private fun EmptyState(modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun BookItem(
+fun ShelfRow(
+    books: List<Book>,
+    onClick: (Book) -> Unit,
+    onDelete: (Book) -> Unit
+) {
+    val woodColor = Color(0xFF8B6F47)
+    val woodColorLight = Color(0xFFA0826D)
+    val woodColorDark = Color(0xFF6B5235)
+
+    Box(modifier = Modifier.fillMaxWidth().height(170.dp)) {
+        // Shelf background
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .height(24.dp)
+                .shadow(4.dp)
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(woodColorLight, woodColor, woodColorDark)
+                    )
+                )
+        )
+        
+        // Books
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 24.dp, start = 16.dp, end = 16.dp)
+                .align(Alignment.BottomCenter),
+            horizontalArrangement = Arrangement.Start,
+            verticalAlignment = Alignment.Bottom
+        ) {
+            books.forEach { book ->
+                Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.BottomCenter) {
+                    BookShelfItem(
+                        book = book,
+                        onClick = { onClick(book) },
+                        onDelete = { onDelete(book) }
+                    )
+                }
+            }
+            // Fill empty spaces if there are less than 3 books so they stay aligned to grid
+            repeat(3 - books.size) {
+                Spacer(modifier = Modifier.weight(1f))
+            }
+        }
+    }
+}
+
+@Composable
+fun BookShelfItem(
     book: Book,
     onClick: () -> Unit,
     onDelete: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Card(
+    val rotation = remember(book.uri) { (-4..4).random().toFloat() }
+    val bookColor = remember(book.uri) {
+        listOf(
+            Color(0xFFE57373), Color(0xFF81C784), Color(0xFF64B5F6),
+            Color(0xFFFFB74D), Color(0xFF9575CD), Color(0xFF4DB6AC),
+            Color(0xFFD4E157), Color(0xFF7986CB)
+        ).random()
+    }
+
+    Box(
         modifier = modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
+            .width(90.dp)
+            .height(130.dp)
+            .graphicsLayer { rotationZ = rotation }
+            .shadow(6.dp, RoundedCornerShape(topEnd = 12.dp, bottomEnd = 12.dp, topStart = 4.dp, bottomStart = 4.dp))
+            .background(bookColor, RoundedCornerShape(topEnd = 12.dp, bottomEnd = 12.dp, topStart = 4.dp, bottomStart = 4.dp))
+            .clickable { onClick() }
     ) {
-        Row(
+        // Spine
+        Box(
             modifier = Modifier
-                .padding(16.dp)
-                .fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = book.displayName,
-                    style = MaterialTheme.typography.titleMedium,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
+                .fillMaxHeight()
+                .width(8.dp)
+                .background(
+                    Brush.horizontalGradient(
+                        colors = listOf(Color.Black.copy(alpha = 0.2f), Color.Transparent)
+                    ),
+                    shape = RoundedCornerShape(topStart = 4.dp, bottomStart = 4.dp)
                 )
-                if (book.totalPages > 0) {
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = stringResource(R.string.home_page_progress, book.lastReadPage + 1, book.totalPages),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                .align(Alignment.CenterStart)
+        )
+        
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(8.dp),
+            verticalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                text = book.displayName,
+                color = Color.White,
+                fontWeight = FontWeight.Bold,
+                fontSize = 12.sp,
+                maxLines = 3,
+                overflow = TextOverflow.Ellipsis
+            )
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Bottom
+            ) {
+                IconButton(
+                    onClick = onDelete,
+                    modifier = Modifier.size(24.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Delete,
+                        contentDescription = stringResource(R.string.home_delete),
+                        tint = Color.White.copy(alpha = 0.8f),
+                        modifier = Modifier.size(16.dp)
                     )
                 }
-            }
-            IconButton(onClick = onDelete) {
-                Icon(
-                    imageVector = Icons.Default.Delete,
-                    contentDescription = stringResource(R.string.home_delete),
-                    tint = MaterialTheme.colorScheme.error
-                )
+                
+                if (book.totalPages > 0) {
+                    val percentage = (book.lastReadPage * 100) / book.totalPages
+                    Text(
+                        text = "$percentage%",
+                        color = Color.White.copy(alpha = 0.9f),
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                } else {
+                    Spacer(modifier = Modifier.width(4.dp))
+                }
             }
         }
     }

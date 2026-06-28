@@ -26,7 +26,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.fmaestre98.pdfviewer.R
 import com.fmaestre98.pdfviewer.pdfViewer.model.PdfViewerOrientation
 import com.fmaestre98.pdfviewer.pdfViewer.ui.ComposePdfViewer
 import com.fmaestre98.pdfviewer.ui.util.ObserveAsEvents
@@ -57,6 +56,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.text
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
+import com.fmaestre98.pdfviewer.R
 import com.fmaestre98.pdfviewer.pdfViewer.rendering.PageThumbnailDrawer
 import com.fmaestre98.pdfviewer.pdfViewer.rendering.PdfPageRenderer
 import com.fmaestre98.pdfviewer.pdfViewer.viewmodel.PdfViewerViewModel
