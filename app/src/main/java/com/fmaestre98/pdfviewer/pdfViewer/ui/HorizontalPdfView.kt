@@ -523,9 +523,9 @@ fun HorizontalPdfView(
 @Composable
 private fun SwipeIndicator(pagerState: PagerState, pageCount: Int) {
     val indicatorText = when {
-        pagerState.currentPage == 0 && pageCount > 1 -> "Desliza para la siguiente página 👉"
-        pagerState.currentPage > 0 && pagerState.currentPage < pageCount - 1 -> "👈 Desliza 👉"
-        pagerState.currentPage == pageCount - 1 && pageCount > 1 -> "👈 Desliza para volver"
+        pagerState.currentPage == 0 && pageCount > 1 -> "Swipe to the next page 👉"
+        pagerState.currentPage > 0 && pagerState.currentPage < pageCount - 1 -> "👈 Swipe 👉"
+        pagerState.currentPage == pageCount - 1 && pageCount > 1 -> "👈 Swipe back"
         else -> ""
     }
 

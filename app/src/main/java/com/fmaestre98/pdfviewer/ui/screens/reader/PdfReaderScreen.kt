@@ -277,7 +277,7 @@ fun PdfReaderScreen(
                                         R.drawable.ic_not_bookmarked
                                     }
                                 ),
-                                contentDescription = if (state.isCurrentPageBookmarked) "Quitar bookmark" else "Añadir bookmark",
+                                contentDescription = if (state.isCurrentPageBookmarked) "Remove bookmark" else "Add bookmark",
                                 tint = Color(0xFFFFA000)
                             )
                         }
@@ -297,7 +297,7 @@ fun PdfReaderScreen(
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.Edit,
-                                    contentDescription = "Ver nota de página",
+                                    contentDescription = "View footnote",
                                     tint = Color(0xFFFFA000),
                                     modifier = Modifier.size(32.dp)
                                 )
@@ -331,7 +331,7 @@ fun PdfReaderScreen(
                                     ) {
                                         Icon(
                                             imageVector = Icons.AutoMirrored.Filled.List,
-                                            contentDescription = "Índice de páginas"
+                                            contentDescription = "Index"
                                         )
                                     }
 
@@ -349,7 +349,7 @@ fun PdfReaderScreen(
                                     ) {
                                         Icon(
                                             imageVector = Icons.Default.Edit,
-                                            contentDescription = "Nota de página",
+                                            contentDescription = "Page note",
                                             tint = if (state.currentPageNote != null) Color.Black else MaterialTheme.colorScheme.onPrimaryContainer
                                         )
                                     }

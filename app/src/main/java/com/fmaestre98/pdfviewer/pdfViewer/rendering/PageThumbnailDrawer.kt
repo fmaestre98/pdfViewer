@@ -132,7 +132,7 @@ fun PageThumbnailDrawer(
                             .padding(bottom = 16.dp)
                     ) {
                         Text(
-                            text = "📚 Índice de Páginas",
+                            text = "📚 Index",
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Bold,
                             fontSize = 22.sp,
