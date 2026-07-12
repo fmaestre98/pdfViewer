@@ -19,9 +19,13 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.foundation.Image
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
@@ -34,7 +38,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.fmaestre98.pdfviewer.R
 import com.fmaestre98.pdfviewer.models.Book
 import com.fmaestre98.pdfviewer.ui.util.ObserveAsEvents
+import com.fmaestre98.pdfviewer.pdfViewer.rendering.PdfRendererManager
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 @Composable
 fun HomeRoot(
@@ -243,6 +250,31 @@ fun BookShelfItem(
             Color(0xFFD4E157), Color(0xFF7986CB)
         ).random()
     }
+    
+    val context = LocalContext.current
+    var thumbnail by remember(book.uri) { mutableStateOf<android.graphics.Bitmap?>(null) }
+
+    LaunchedEffect(book.uri) {
+        withContext(Dispatchers.IO) {
+            try {
+                val fd = context.contentResolver.openFileDescriptor(Uri.parse(book.uri), "r")
+                if (fd != null) {
+                    val manager = PdfRendererManager.create(fd)
+                    if (manager.pageCount > 0) {
+                        thumbnail = manager.renderPage(
+                            pageIndex = 0,
+                            scaleFactor = 0.45f,
+                            maxWidth = 300,
+                            maxHeight = 450
+                        )
+                    }
+                    manager.close() // this also closes fd
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
 
     Box(
         modifier = modifier
@@ -253,6 +285,33 @@ fun BookShelfItem(
             .background(bookColor, RoundedCornerShape(topEnd = 12.dp, bottomEnd = 12.dp, topStart = 4.dp, bottomStart = 4.dp))
             .clickable { onClick() }
     ) {
+        if (thumbnail != null) {
+            Image(
+                bitmap = thumbnail!!.asImageBitmap(),
+                contentDescription = "Cover for ${book.displayName}",
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clip(RoundedCornerShape(topEnd = 12.dp, bottomEnd = 12.dp, topStart = 4.dp, bottomStart = 4.dp))
+            )
+            
+            // Subtle gradient to ensure text readability over the image
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        brush = Brush.verticalGradient(
+                            colors = listOf(
+                                Color.Black.copy(alpha = 0.5f),
+                                Color.Transparent,
+                                Color.Black.copy(alpha = 0.7f)
+                            )
+                        ),
+                        shape = RoundedCornerShape(topEnd = 12.dp, bottomEnd = 12.dp, topStart = 4.dp, bottomStart = 4.dp)
+                    )
+            )
+        }
+        
         // Spine
         Box(
             modifier = Modifier
@@ -260,7 +319,7 @@ fun BookShelfItem(
                 .width(8.dp)
                 .background(
                     Brush.horizontalGradient(
-                        colors = listOf(Color.Black.copy(alpha = 0.2f), Color.Transparent)
+                        colors = listOf(Color.Black.copy(alpha = 0.3f), Color.Transparent)
                     ),
                     shape = RoundedCornerShape(topStart = 4.dp, bottomStart = 4.dp)
                 )
@@ -279,7 +338,8 @@ fun BookShelfItem(
                 fontWeight = FontWeight.Bold,
                 fontSize = 12.sp,
                 maxLines = 3,
-                overflow = TextOverflow.Ellipsis
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(start = 4.dp)
             )
 
             Row(

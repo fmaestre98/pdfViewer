@@ -44,7 +44,7 @@ fun PageNoteBottomSheet(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
-                text = if (existingNote != null) "Editar Nota" else "Agregar Nota",
+                text = if (existingNote != null) "Edit Note" else "Add Note",
                 style = MaterialTheme.typography.titleLarge
             )
             Spacer(modifier = Modifier.height(16.dp))
@@ -52,7 +52,7 @@ fun PageNoteBottomSheet(
                 value = text,
                 onValueChange = { text = it },
                 modifier = Modifier.fillMaxWidth(),
-                label = { Text("Escribe tu nota aquí") },
+                label = { Text("Write your note here") },
                 minLines = 3
             )
             Spacer(modifier = Modifier.height(24.dp))

@@ -12,7 +12,7 @@ A modern, visually immersive, and feature-rich Android PDF Reader application bu
 *   **Storage Access**: Easily import PDFs from local storage.
 
 ### 2. Custom Interactive PDF Viewer 
-*   **Smooth Gesture Controls**: Support for pinch-to-zoom, pan, and double-tap zoom for perfect readability.
+*   **Smooth Gesture Controls**: Support for pinch-to-zoom, pan, and double-tap zoom for readability.
 *   **Auto-Resume**: Remembers your exact position and resumes from the last read page for each document automatically.
 *   **Edge-to-Edge Experience**: Utilizes modern Android inset handling for immersive reading.
 
@@ -26,7 +26,7 @@ A modern, visually immersive, and feature-rich Android PDF Reader application bu
 
 ---
 
-## 🛠️ Technology Stack
+## Technology Stack
 
 The application leverages the latest modern Android development tools and best practices:
 
