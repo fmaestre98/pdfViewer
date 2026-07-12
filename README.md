@@ -4,6 +4,21 @@ A modern, visually immersive, and feature-rich Android PDF Reader application bu
 
 ---
 
+## Screenshots
+
+<p align="center">
+  <img src="app/images/home.jpg" width="30%" />
+  <img src="app/images/index.jpg" width="30%" />
+  <img src="app/images/search.jpg" width="30%" />
+</p>
+<p align="center">
+  <img src="app/images/text selection.jpg" width="30%" />
+  <img src="app/images/highlights.jpg" width="30%" />
+  <img src="app/images/add note.jpg" width="30%" />
+</p>
+
+---
+
 ##  Key Features
 
 ### 1. Interactive Bookshelf Library 
