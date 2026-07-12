@@ -69,13 +69,21 @@ class PdfViewerViewModel  @Inject constructor(): ViewModel() {
             val renderer = pageRenderer ?: return@launch
             val loadedPageModel = interactiveState.getPageModel(pageIndex)
             if (loadedPageModel != null && loadedPageModel.targetHeight == targetHeight && loadedPageModel.targetWidth == targetWidth) {
-                // Ya está cargado
+                // Already loaded
                 return@launch
             }
             val pageModel = renderer.getPageText(pageIndex, targetWidth, targetHeight)
             // Pass current page index for cleanup reference
             interactiveState.setPageModel(pageIndex, pageModel, navigationState.currentPageIndex)
-            interactiveState.deactivateTextSelection()
+            
+            val pendingQuery = interactiveState.pendingSearchQuery
+            if (pendingQuery != null && interactiveState.pendingSearchPage == pageIndex) {
+                interactiveState.selectTextByQuery(pendingQuery, pageIndex)
+                interactiveState.pendingSearchQuery = null
+                interactiveState.pendingSearchPage = -1
+            } else {
+                interactiveState.deactivateTextSelection()
+            }
         }
     }
 
@@ -88,15 +96,15 @@ class PdfViewerViewModel  @Inject constructor(): ViewModel() {
         verticalView: Boolean = false
     ) {
         println("my-logs called setCurrentPage pageIndex=$pageIndex optimalSize=$optimalSize")
-        // Desactivar selección de texto si cambia la página
+        // Deactivate text selection if page changes
         if (navigationState.currentPageIndex != pageIndex && interactiveState.isTextSelectionActive) {
-            // Solo desactivar si la selección está en una página diferente
+            // Only deactivate if selection is on a different page
             if (interactiveState.selectionPageIndex != pageIndex) {
                 interactiveState.deactivateTextSelection()
             }
         }
         
-        // Detener TTS si está activo al cambiar de página
+        // Stop TTS if active when changing pages
         if (interactiveState.isKaraokeMode && navigationState.currentPageIndex != pageIndex) {
             interactiveState.currentReadingWord = null
         }
@@ -122,8 +130,6 @@ class PdfViewerViewModel  @Inject constructor(): ViewModel() {
      */
     override fun onCleared() {
         super.onCleared()
-        // No destruimos el TtsManager aquí porque es un singleton
-        // Se destruirá cuando la aplicación se cierre
         pageRenderer?.dispose()
         pageRenderer = null
         loaderState.dispose()

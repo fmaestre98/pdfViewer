@@ -62,6 +62,9 @@ import com.fmaestre98.pdfviewer.pdfViewer.rendering.PdfPageRenderer
 import com.fmaestre98.pdfviewer.pdfViewer.viewmodel.PdfViewerViewModel
 import com.fmaestre98.pdfviewer.repository.NormalizedRect
 import com.fmaestre98.pdfviewer.ui.screens.reader.components.PageNoteBottomSheet
+import com.fmaestre98.pdfviewer.ui.screens.reader.components.PdfSearchOverlay
+import androidx.compose.foundation.layout.Row
+import androidx.compose.material.icons.filled.Search
 
 @Composable
 fun PdfReaderRoot(
@@ -258,28 +261,40 @@ fun PdfReaderScreen(
                         )
                     }
 
-                    // Botón de bookmark en la parte superior derecha
+                    // Bookmark and search buttons at the top right
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
                             .padding(top = 16.dp, end = 16.dp),
                         contentAlignment = Alignment.TopEnd
                     ) {
-                        IconButton(
-                            onClick = { onAction(PdfReaderAction.ToggleBookmark) },
-                            modifier = Modifier.size(48.dp)
-                        ) {
-                            Icon(
-                                painter = painterResource(
-                                    id = if (state.isCurrentPageBookmarked) {
-                                        R.drawable.ic_bookmarked
-                                    } else {
-                                        R.drawable.ic_not_bookmarked
-                                    }
-                                ),
-                                contentDescription = if (state.isCurrentPageBookmarked) "Remove bookmark" else "Add bookmark",
-                                tint = Color(0xFFFFA000)
-                            )
+                        Row {
+                            IconButton(
+                                onClick = { onAction(PdfReaderAction.ToggleSearch) },
+                                modifier = Modifier.size(48.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Search,
+                                    contentDescription = "Search text",
+                                    tint = Color.Gray
+                                )
+                            }
+                            IconButton(
+                                onClick = { onAction(PdfReaderAction.ToggleBookmark) },
+                                modifier = Modifier.size(48.dp)
+                            ) {
+                                Icon(
+                                    painter = painterResource(
+                                        id = if (state.isCurrentPageBookmarked) {
+                                            R.drawable.ic_bookmarked
+                                        } else {
+                                            R.drawable.ic_not_bookmarked
+                                        }
+                                    ),
+                                    contentDescription = if (state.isCurrentPageBookmarked) "Remove bookmark" else "Add bookmark",
+                                    tint = Color(0xFFFFA000)
+                                )
+                            }
                         }
                     }
 
@@ -305,7 +320,7 @@ fun PdfReaderScreen(
                         }
                     }
 
-                    // Floating Action Toolbar - Visible si hay archivo
+                    // Floating Action Toolbar - Visible if file exists
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
@@ -361,7 +376,7 @@ fun PdfReaderScreen(
                             ) {
                                 Icon(
                                     imageVector = if (state.isFabExpanded) Icons.Default.Close else Icons.Default.Add,
-                                    contentDescription = if (state.isFabExpanded) "Cerrar menú" else "Abrir menú"
+                                    contentDescription = if (state.isFabExpanded) "Close menu" else "Open menu"
                                 )
                             }
                         }
@@ -372,6 +387,23 @@ fun PdfReaderScreen(
                         modifier = Modifier.align(Alignment.Center)
                     )
                 }
+            }
+
+            Box(modifier = Modifier.align(Alignment.TopCenter)) {
+                PdfSearchOverlay(
+                    isSearchOpen = state.isSearchOpen,
+                    searchQuery = state.searchQuery,
+                    searchResults = state.searchResults,
+                    isSearching = state.isSearching,
+                    onQueryChange = { onAction(PdfReaderAction.UpdateSearchQuery(it)) },
+                    onClose = { onAction(PdfReaderAction.CloseSearch) },
+                    onResultClick = { page ->
+                        interactiveState.pendingSearchQuery = state.searchQuery
+                        interactiveState.pendingSearchPage = page
+                        navigateToPage?.invoke(page)
+                        onAction(PdfReaderAction.SelectSearchResult(page))
+                    }
+                )
             }
         }
 

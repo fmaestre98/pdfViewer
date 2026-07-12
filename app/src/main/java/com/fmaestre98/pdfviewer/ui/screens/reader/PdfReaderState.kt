@@ -1,5 +1,7 @@
 package com.fmaestre98.pdfviewer.ui.screens.reader
 
+import com.fmaestre98.pdfviewer.pdfViewer.text.SearchResult
+
 data class PdfReaderState(
     val uri: String = "",
     val filePath: String? = null,
@@ -13,5 +15,9 @@ data class PdfReaderState(
     val isCurrentPageBookmarked: Boolean = false,
     val bookmarkedPages: Set<Int> = emptySet(),
     val highlights: Map<Int, List<com.fmaestre98.pdfviewer.repository.HighlightData>> = emptyMap(),
-    val currentPageNote: com.fmaestre98.pdfviewer.room.entity.PageNoteEntity? = null
+    val currentPageNote: com.fmaestre98.pdfviewer.room.entity.PageNoteEntity? = null,
+    val isSearchOpen: Boolean = false,
+    val searchQuery: String = "",
+    val searchResults: List<SearchResult> = emptyList(),
+    val isSearching: Boolean = false
 )

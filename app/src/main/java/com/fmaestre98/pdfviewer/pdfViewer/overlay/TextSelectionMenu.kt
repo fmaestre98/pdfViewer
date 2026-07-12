@@ -112,11 +112,11 @@ fun TextSelectionMenu(
                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                ActionItem(icon = Icons.Default.Menu, text = "Copiar") {
+                ActionItem(icon = Icons.Default.Menu, text = "Copy") {
                     onCopy()
                 }
                 Box(modifier = Modifier.width(16.dp))
-                ActionItem(icon = Icons.Default.Create, text = "Resaltar") {
+                ActionItem(icon = Icons.Default.Create, text = "Highlight") {
                     showColorPicker = true
                 }
             }

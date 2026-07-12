@@ -17,4 +17,8 @@ sealed interface PdfReaderAction {
         val snippet: String,
         val normalizedRects: List<com.fmaestre98.pdfviewer.repository.NormalizedRect>
     ) : PdfReaderAction
+    data object ToggleSearch : PdfReaderAction
+    data object CloseSearch : PdfReaderAction
+    data class UpdateSearchQuery(val query: String) : PdfReaderAction
+    data class SelectSearchResult(val page: Int) : PdfReaderAction
 }

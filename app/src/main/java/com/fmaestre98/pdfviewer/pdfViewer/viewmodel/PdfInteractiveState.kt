@@ -46,6 +46,9 @@ class PdfInteractiveState {
     private val pageModels = mutableMapOf<Int, PageModel>()
     private val optimizedPageModels = mutableMapOf<Int, com.fmaestre98.pdfviewer.pdfViewer.model.OptimizedPageModel>()
 
+    var pendingSearchQuery by mutableStateOf<String?>(null)
+    var pendingSearchPage by mutableIntStateOf(-1)
+
     // Nuevo método para obtener/setear PageModel por página
     fun getPageModel(pageIndex: Int): PageModel? = pageModels[pageIndex]
     
@@ -176,6 +179,36 @@ class PdfInteractiveState {
 
     fun updateSelectionEnd(char: PdfChar) {
         selectionEndChar = char
+    }
+
+    /**
+     * Busca el texto proporcionado dentro de la página indicada y, si lo encuentra,
+     * establece la selección de texto sobre él.
+     */
+    fun selectTextByQuery(query: String, pageIndex: Int) {
+        val model = pageModels[pageIndex] ?: return
+        if (query.isBlank()) return
+        
+        val queryLower = query.lowercase().replace(Regex("\\s+"), "")
+
+        val allChars = mutableListOf<PdfChar>()
+        model.coordinates.forEach { line ->
+            line.words.forEach { word ->
+                allChars.addAll(word.characters)
+            }
+        }
+        
+        val fullText = allChars.joinToString("") { it.text }.lowercase()
+        val matchIndex = fullText.indexOf(queryLower)
+        
+        if (matchIndex != -1) {
+            val startChar = allChars[matchIndex]
+            val endChar = allChars[minOf(allChars.size - 1, matchIndex + queryLower.length - 1)]
+            selectionStartChar = startChar
+            selectionEndChar = endChar
+            selectionPageIndex = pageIndex
+            isDraggingHandle = false
+        }
     }
 
     /**

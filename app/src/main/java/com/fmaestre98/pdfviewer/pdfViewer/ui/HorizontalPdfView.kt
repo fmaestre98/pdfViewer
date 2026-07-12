@@ -93,7 +93,7 @@ fun HorizontalPdfView(
     // Navigation function
     val navigateToPage: (Int) -> Unit = { targetPage ->
         scope.launch {
-            pagerState.animateScrollToPage(targetPage)
+            pagerState.scrollToPage(targetPage)
         }
     }
 
@@ -102,12 +102,7 @@ fun HorizontalPdfView(
         val targetPage = navigationState.currentPageIndex
         if (targetPage >= 0 && targetPage < loaderState.pageCount) {
             if (targetPage != pagerState.currentPage) {
-                // If it's the initial load (pager at 0, target not 0), use scrollToPage for immediate jump
-                if (pagerState.currentPage == 0 && targetPage != 0) {
-                    pagerState.scrollToPage(targetPage)
-                } else {
-                    pagerState.animateScrollToPage(targetPage)
-                }
+                pagerState.scrollToPage(targetPage)
             }
         }
     }

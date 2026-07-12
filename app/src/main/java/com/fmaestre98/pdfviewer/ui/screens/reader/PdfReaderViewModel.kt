@@ -18,6 +18,11 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.util.UUID
 import javax.inject.Inject
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.catch
+import com.fmaestre98.pdfviewer.pdfViewer.text.PdfSearchManager
+import java.io.File
 
 @HiltViewModel
 class PdfReaderViewModel @Inject constructor(
@@ -36,6 +41,9 @@ class PdfReaderViewModel @Inject constructor(
 
     private val _events = Channel<PdfReaderEvent>()
     val events = _events.receiveAsFlow()
+
+    private val searchManager = PdfSearchManager()
+    private var searchJob: Job? = null
 
     init {
         loadBookData()
@@ -163,6 +171,48 @@ class PdfReaderViewModel @Inject constructor(
                     val highlightsMap = highlightRepository.getHighlightsGroupedByPage(uri)
                     _state.update { it.copy(highlights = highlightsMap) }
                 }
+            }
+            PdfReaderAction.ToggleSearch -> {
+                _state.update {
+                    it.copy(
+                        isSearchOpen = !it.isSearchOpen,
+                        isFabExpanded = false,
+                        isThumbnailDrawerOpen = false
+                    )
+                }
+            }
+            PdfReaderAction.CloseSearch -> {
+                _state.update { it.copy(isSearchOpen = false, searchQuery = "", searchResults = emptyList(), isSearching = false) }
+            }
+            is PdfReaderAction.UpdateSearchQuery -> {
+                _state.update { it.copy(searchQuery = action.query, isSearching = action.query.isNotBlank(), searchResults = emptyList()) }
+                searchJob?.cancel()
+                if (action.query.isNotBlank()) {
+                    searchJob = viewModelScope.launch {
+                        delay(500) // Debounce
+                        val filePath = _state.value.filePath
+                        if (filePath != null) {
+                            searchManager.search(File(filePath), action.query)
+                                .catch { e ->
+                                    e.printStackTrace()
+                                    _state.update { it.copy(isSearching = false) }
+                                }
+                                .collect { results ->
+                                    if (results.isNotEmpty()) {
+                                        _state.update {
+                                            it.copy(searchResults = it.searchResults + results)
+                                        }
+                                    }
+                                }
+                            _state.update { it.copy(isSearching = false) }
+                        } else {
+                            _state.update { it.copy(isSearching = false) }
+                        }
+                    }
+                }
+            }
+            is PdfReaderAction.SelectSearchResult -> {
+                _state.update { it.copy(isSearchOpen = false) }
             }
         }
     }
