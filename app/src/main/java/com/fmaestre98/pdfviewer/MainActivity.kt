@@ -19,6 +19,8 @@ import com.fmaestre98.pdfviewer.ui.screens.reader.PdfReaderRoot
 import com.fmaestre98.pdfviewer.ui.theme.PdfViewerTheme
 import dagger.hilt.android.AndroidEntryPoint
 
+import com.fmaestre98.pdfviewer.ui.screens.annotations.AnnotationsRoot
+
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -39,13 +41,31 @@ class MainActivity : ComponentActivity() {
                             HomeRoot(
                                 onNavigateToReader = { uri ->
                                     navController.navigate(AppNavigation.createReaderRoute(uri))
+                                },
+                                onNavigateToAnnotations = {
+                                    navController.navigate(AppNavigation.ROUTE_ANNOTATIONS)
+                                }
+                            )
+                        }
+                        composable(route = AppNavigation.ROUTE_ANNOTATIONS) {
+                            AnnotationsRoot(
+                                onNavigateBack = {
+                                    navController.popBackStack()
+                                },
+                                onNavigateToReader = { uri, page ->
+                                    navController.navigate(AppNavigation.createReaderRoute(uri, page))
                                 }
                             )
                         }
                         composable(
                             route = AppNavigation.ROUTE_READER,
                             arguments = listOf(
-                                navArgument("encodedUri") { type = NavType.StringType }
+                                navArgument("encodedUri") { type = NavType.StringType },
+                                navArgument("initialPage") {
+                                    type = NavType.StringType
+                                    nullable = true
+                                    defaultValue = null
+                                }
                             )
                         ) {
                             PdfReaderRoot(

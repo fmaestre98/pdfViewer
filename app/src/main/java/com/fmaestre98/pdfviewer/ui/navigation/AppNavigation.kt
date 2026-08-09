@@ -2,11 +2,16 @@ package com.fmaestre98.pdfviewer.ui.navigation
 
 object AppNavigation {
     const val ROUTE_HOME = "home"
-    const val ROUTE_READER = "reader/{encodedUri}"
+    const val ROUTE_ANNOTATIONS = "annotations"
+    const val ROUTE_READER = "reader/{encodedUri}?initialPage={initialPage}"
 
-    fun createReaderRoute(uri: String): String {
-        // Simple encoding to pass the URI safely as a navigation argument
+    fun createReaderRoute(uri: String, initialPage: Int? = null): String {
         val encodedUri = android.net.Uri.encode(uri)
-        return "reader/$encodedUri"
+        return if (initialPage != null) {
+            "reader/$encodedUri?initialPage=$initialPage"
+        } else {
+            "reader/$encodedUri"
+        }
     }
 }
+

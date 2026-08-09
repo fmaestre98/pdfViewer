@@ -34,6 +34,7 @@ class PdfReaderViewModel @Inject constructor(
 ) : ViewModel() {
 
     private val encodedUri: String = checkNotNull(savedStateHandle["encodedUri"])
+    private val initialPageArg: Int? = savedStateHandle.get<String>("initialPage")?.toIntOrNull()
     private val uri: String = Uri.decode(encodedUri)
 
     private val _state = MutableStateFlow(PdfReaderState(uri = uri))
@@ -57,16 +58,17 @@ class PdfReaderViewModel @Inject constructor(
                     val bookmarks = bookmarkRepository.getAllBookmarksForBook(uri)
                     val bookmarkedPages = bookmarks.map { it.page }.toSet()
                     val highlightsMap = highlightRepository.getHighlightsGroupedByPage(uri)
-                    val note = pageNoteRepository.getNoteForPage(uri, book.lastReadPage)
+                    val targetPage = initialPageArg ?: book.lastReadPage
+                    val note = pageNoteRepository.getNoteForPage(uri, targetPage)
 
                     _state.update { 
                         it.copy(
                             isLoading = false,
-                            initialPage = book.lastReadPage,
-                            currentPage = book.lastReadPage,
+                            initialPage = targetPage,
+                            currentPage = targetPage,
                             filePath = book.filePath,
                             bookmarkedPages = bookmarkedPages,
-                            isCurrentPageBookmarked = bookmarkedPages.contains(book.lastReadPage),
+                            isCurrentPageBookmarked = bookmarkedPages.contains(targetPage),
                             highlights = highlightsMap,
                             currentPageNote = note,
                             error = null

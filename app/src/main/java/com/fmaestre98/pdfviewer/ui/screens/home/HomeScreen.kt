@@ -43,9 +43,13 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
+import androidx.compose.ui.res.painterResource
+
+
 @Composable
 fun HomeRoot(
     onNavigateToReader: (String) -> Unit,
+    onNavigateToAnnotations: () -> Unit,
     viewModel: HomeViewModel = hiltViewModel()
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -101,7 +105,8 @@ fun HomeRoot(
         },
         onPickPdfClick = {
              launcher.launch(arrayOf("application/pdf"))
-        }
+        },
+        onNavigateToAnnotations = onNavigateToAnnotations
     )
 }
 
@@ -111,13 +116,23 @@ fun HomeScreen(
     state: HomeState,
     snackbarHostState: SnackbarHostState,
     onAction: (HomeAction) -> Unit,
-    onPickPdfClick: () -> Unit
+    onPickPdfClick: () -> Unit,
+    onNavigateToAnnotations: () -> Unit
 ) {
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(R.string.home_title)) },
+                actions = {
+                    IconButton(onClick = onNavigateToAnnotations) {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_bookmarked),
+                            contentDescription = stringResource(R.string.annotations_title),
+                            tint = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                    }
+                },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primaryContainer,
                     titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer

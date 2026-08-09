@@ -20,4 +20,15 @@
     <string name="reader_error_file">Could not open file</string>
     <string name="reader_back">Back</string>
     <string name="reader_page_indicator">%1$d / %2$d</string>
+
+    <!-- Annotations screen -->
+    <string name="annotations_title">Annotations &amp; Bookmarks</string>
+    <string name="annotations_empty_title">No annotations</string>
+    <string name="annotations_empty_subtitle">Highlights, bookmarks, and notes you add will appear here organized by book.</string>
+    <string name="annotations_page_label">Page %1$d</string>
+    <string name="annotations_bookmark_label">Bookmark on page %1$d</string>
+    <string name="annotations_highlights_count">%1$d highlights</string>
+    <string name="annotations_type_highlight">Highlight</string>
+    <string name="annotations_type_note">Page note</string>
+    <string name="annotations_type_bookmark">Bookmark</string>
 </resources>
