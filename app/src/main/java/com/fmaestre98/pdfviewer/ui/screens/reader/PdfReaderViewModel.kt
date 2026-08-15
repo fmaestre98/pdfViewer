@@ -216,6 +216,19 @@ class PdfReaderViewModel @Inject constructor(
             is PdfReaderAction.SelectSearchResult -> {
                 _state.update { it.copy(isSearchOpen = false) }
             }
+            PdfReaderAction.ToggleOrientation -> {
+                _state.update { state ->
+                    val newOrientation = if (state.orientation == com.fmaestre98.pdfviewer.pdfViewer.model.PdfViewerOrientation.Horizontal) {
+                        com.fmaestre98.pdfviewer.pdfViewer.model.PdfViewerOrientation.Vertical
+                    } else {
+                        com.fmaestre98.pdfviewer.pdfViewer.model.PdfViewerOrientation.Horizontal
+                    }
+                    state.copy(
+                        orientation = newOrientation,
+                        isFabExpanded = false
+                    )
+                }
+            }
         }
     }
 }

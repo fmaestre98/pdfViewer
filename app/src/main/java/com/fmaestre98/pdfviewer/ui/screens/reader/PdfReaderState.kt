@@ -1,5 +1,6 @@
 package com.fmaestre98.pdfviewer.ui.screens.reader
 
+import com.fmaestre98.pdfviewer.pdfViewer.model.PdfViewerOrientation
 import com.fmaestre98.pdfviewer.pdfViewer.text.SearchResult
 
 data class PdfReaderState(
@@ -19,5 +20,6 @@ data class PdfReaderState(
     val isSearchOpen: Boolean = false,
     val searchQuery: String = "",
     val searchResults: List<SearchResult> = emptyList(),
-    val isSearching: Boolean = false
+    val isSearching: Boolean = false,
+    val orientation: PdfViewerOrientation = PdfViewerOrientation.Horizontal
 )

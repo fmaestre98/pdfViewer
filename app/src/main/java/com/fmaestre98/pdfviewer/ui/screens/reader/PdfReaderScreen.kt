@@ -180,7 +180,7 @@ fun PdfReaderScreen(
                                     }
                                 },
                             initialPage = resolvedInitialPage,
-                            orientation = PdfViewerOrientation.Horizontal,
+                            orientation = state.orientation,
                             onNavigationStateChange = { currentPage, navigate ->
                                 onAction(PdfReaderAction.OnPageChanged(currentPage))
                                 navigateToPage = navigate
@@ -347,6 +347,30 @@ fun PdfReaderScreen(
                                         Icon(
                                             imageVector = Icons.AutoMirrored.Filled.List,
                                             contentDescription = "Index"
+                                        )
+                                    }
+
+                                    Spacer(modifier = Modifier.height(8.dp))
+
+                                    FloatingActionButton(
+                                        onClick = { onAction(PdfReaderAction.ToggleOrientation) },
+                                        modifier = Modifier.size(56.dp)
+                                    ) {
+                                        Icon(
+                                            painter = painterResource(
+                                                id = if (state.orientation == PdfViewerOrientation.Horizontal) {
+                                                    R.drawable.ic_swap_vertical
+                                                } else {
+                                                    R.drawable.ic_swap_horizontal
+                                                }
+                                            ),
+                                            contentDescription = stringResource(
+                                                if (state.orientation == PdfViewerOrientation.Horizontal) {
+                                                    R.string.reader_orientation_vertical
+                                                } else {
+                                                    R.string.reader_orientation_horizontal
+                                                }
+                                            )
                                         )
                                     }
 

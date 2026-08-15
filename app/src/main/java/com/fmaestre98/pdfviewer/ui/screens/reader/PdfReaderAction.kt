@@ -21,4 +21,5 @@ sealed interface PdfReaderAction {
     data object CloseSearch : PdfReaderAction
     data class UpdateSearchQuery(val query: String) : PdfReaderAction
     data class SelectSearchResult(val page: Int) : PdfReaderAction
+    data object ToggleOrientation : PdfReaderAction
 }
