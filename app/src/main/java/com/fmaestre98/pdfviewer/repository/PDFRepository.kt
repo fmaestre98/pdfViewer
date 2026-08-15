@@ -18,7 +18,7 @@ interface PDFRepository {
     suspend fun getAllBooks(): List<Book>
 
     /** Add a newly picked PDF to the library. Copies the file from [sourceUri] to internal storage. */
-    suspend fun addBook(sourceUri: android.net.Uri, displayName: String, sizeBytes: Long)
+    suspend fun addBook(sourceUri: android.net.Uri, displayName: String, sizeBytes: Long): Book
 
     /**
      * Update metadata fields after the document has been opened for the first time
