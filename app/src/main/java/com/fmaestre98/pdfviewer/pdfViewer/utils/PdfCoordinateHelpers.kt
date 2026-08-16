@@ -120,21 +120,16 @@ object PdfCoordinateHelpers {
         pageHeight: Int,
         viewWidth: Float // Ancho de la vista disponible (ancho de pantalla)
     ): Pair<Float, Float> {
-        // En vertical, asumimos Fit Width (la página llena el ancho)
-        // Calculamos la escala basada en el ancho
-        val scale = viewWidth / pageWidth
+        // En vertical, la página se renderiza a la anchura optimalWidth (pageWidth).
+        // Calculamos el descentrado horizontal si la página es más estrecha que la pantalla
+        val centeringOffsetX = (viewWidth - pageWidth.toFloat()) / 2f
 
-        // Calculamos el offset X si la página es más estrecha que la pantalla (raro en vertical móvil, pero posible)
-        val renderedWidth = pageWidth * scale
-        val centeringOffsetX = (viewWidth - renderedWidth) / 2f
+        // Transformación inversa:
+        // X: Restamos el offset de centrado horizontal
+        val pdfX = tapX - centeringOffsetX
 
-        // Transformación inversa
-        // X: Restamos el padding lateral y dividimos por la escala
-        val pdfX = (tapX - centeringOffsetX) / scale
-
-        // Y: En vertical dentro de LazyColumn, el tapY ya es relativo al inicio de la página renderizada.
-        // Solo necesitamos dividir por la escala.
-        val pdfY = tapY / scale
+        // Y: En vertical dentro de LazyColumn, tapY ya es relativo al borde superior del item (0..pageHeight)
+        val pdfY = tapY
 
         return pdfX to pdfY
     }
@@ -189,19 +184,14 @@ object PdfCoordinateHelpers {
         zoomLevel: Float,
         offsetX: Float
     ): Offset {
-        // 1. Calculate Scale & Centering (same as convertToPageCoordinatesVertical)
-        // In vertical mode, pages fit width (usually)
-        val scale = screenWidth / pageWidth
-        
         // Handle centering if page is narrower than screen
-        val renderedWidth = pageWidth * scale
-        val centeringOffsetX = (screenWidth - renderedWidth) / 2f
+        val centeringOffsetX = (screenWidth - pageWidth.toFloat()) / 2f
         
-        // 2. Calculate "Layout Coordinates" (position inside Un-zoomed LazyColumn)
-        val layoutX = pdfPoint.x * scale + centeringOffsetX
-        val layoutY = itemOffset + pdfPoint.y * scale
+        // Calculate "Layout Coordinates" (position inside Un-zoomed LazyColumn)
+        val layoutX = pdfPoint.x + centeringOffsetX
+        val layoutY = itemOffset + pdfPoint.y
         
-        // 3. Apply Global Zoom & Pan (Pivot is Center of Screen)
+        // Apply Global Zoom & Pan (Pivot is Center of Screen)
         val centerX = screenWidth / 2f
         val centerY = screenHeight / 2f
         

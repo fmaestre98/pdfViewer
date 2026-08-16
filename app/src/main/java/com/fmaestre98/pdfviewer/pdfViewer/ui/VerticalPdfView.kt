@@ -273,18 +273,10 @@ fun VerticalPdfView(
                 val pageWidth = optimalSize.first.toFloat()
                 val pageHeight = optimalSize.second.toFloat()
 
-                // Calculate scale using passed view dimensions
-                val curViewWidth = viewWidth.toFloat()
-                val curViewHeight = viewHeight.toFloat()
-                val scaleX = curViewWidth / pageWidth
-                val scaleY = curViewHeight / pageHeight
-                val baseScale = minOf(scaleX, scaleY)
-                val centeringOffsetX = (curViewWidth - pageWidth * baseScale) / 2f
-                val centeringOffsetY = (curViewHeight - pageHeight * baseScale) / 2f
-
-                // Inverse projection
-                val pdfX = (x - centeringOffsetX) / baseScale
-                val pdfY = (y - centeringOffsetY) / baseScale
+                // In VerticalPdfView, TextSelectionOverlay matches the exact size of the page item.
+                // Therefore, x and y passed from the handle overlay are already in page pixel coordinates.
+                val pdfX = x.coerceIn(0f, pageWidth)
+                val pdfY = y.coerceIn(0f, pageHeight)
 
                 // Find the new char
                 val optimizedModel = interactiveState.getOptimizedPageModel(interactiveState.selectionPageIndex)

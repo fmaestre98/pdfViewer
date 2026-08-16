@@ -5,6 +5,7 @@ import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -103,10 +104,12 @@ fun PdfPageItem(
             modifier
                 .width(optimalSize.first.toDp())
                 .height(optimalSize.second.toDp())
+                .background(Color.White)
         }
     } else {
         modifier
             .fillMaxSize()
+            .background(Color.White)
     }
     Box(
         modifier = itemModifier,

@@ -18,7 +18,7 @@ internal object PdfViewerConstants {
     const val PAN_SENSITIVITY_FACTOR = 1.2f
     
     // Page spacing
-    const val VERTICAL_PAGE_SPACING_DP = 16
+    const val VERTICAL_PAGE_SPACING_DP = 6
     const val VERTICAL_PAGE_HORIZONTAL_PADDING_DP = 8
     
     // Page model loading debounce
