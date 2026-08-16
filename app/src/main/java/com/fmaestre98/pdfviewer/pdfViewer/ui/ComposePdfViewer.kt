@@ -27,6 +27,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import com.fmaestre98.pdfviewer.pdfViewer.model.PageModel
+import com.fmaestre98.pdfviewer.pdfViewer.model.PdfViewerConstants
 import com.fmaestre98.pdfviewer.pdfViewer.model.PdfViewerOrientation
 import com.fmaestre98.pdfviewer.pdfViewer.viewmodel.PdfViewerViewModel
 import com.fmaestre98.pdfviewer.pdfViewer.viewmodel.PdfLoaderState
@@ -166,11 +167,30 @@ private fun PdfViewerContent(
 
     // Calculate optimal page sizes when renderer is available
     LaunchedEffect(pageRenderer, loaderState.pageCount, screenWidth, screenHeight, orientation) {
+        // Adjust available dimensions based on orientation:
+        // - Vertical: subtract the horizontal page padding from the usable width so pages
+        //   don't overflow the content area after contentPadding is applied.
+        // - Horizontal: subtract the compact dots indicator height (~14dp) so the BOTH policy
+        //   calculates with the actual drawable height instead of the full screen height.
+        val dotsIndicatorHeightPx = with(density) {
+            (6.dp + 8.dp).toPx()  // dotSize + vertical margins, matching SwipeDotsIndicator
+        }
+        val horizontalPaddingPx = with(density) {
+            (PdfViewerConstants.VERTICAL_PAGE_HORIZONTAL_PADDING_DP * 2).dp.toPx()
+        }
+        val effectiveWidth = when (orientation) {
+            PdfViewerOrientation.Vertical -> screenWidth - horizontalPaddingPx
+            PdfViewerOrientation.Horizontal -> screenWidth
+        }
+        val effectiveHeight = when (orientation) {
+            PdfViewerOrientation.Vertical -> screenHeight
+            PdfViewerOrientation.Horizontal -> (screenHeight - dotsIndicatorHeightPx).coerceAtLeast(100f)
+        }
         optimalPageSizes.value = calculateOptimalPageSizes(
             pageRenderer = pageRenderer,
             pageCount = loaderState.pageCount,
-            screenWidth = screenWidth,
-            screenHeight = screenHeight,
+            screenWidth = effectiveWidth,
+            screenHeight = effectiveHeight,
             orientation = orientation
         )
     }

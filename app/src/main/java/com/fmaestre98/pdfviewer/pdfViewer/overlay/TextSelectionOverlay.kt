@@ -213,8 +213,8 @@ fun TextSelectionOverlay(
             SelectionHandleTeardrop(
                 isStart = true,
                 position = snappedStart,
-                touchSize = touchTargetDp,
-                visualSize = visualHandleSize,
+                touchSize = touchTargetDp / scaleFactor,
+                visualSize = visualHandleSize / scaleFactor,
                 onDragStart = {
                     interactiveState.isDraggingHandle = true
                     draggingHandle = HandleType.START
@@ -244,8 +244,8 @@ fun TextSelectionOverlay(
             SelectionHandleTeardrop(
                 isStart = false,
                 position = snappedEnd,
-                touchSize = touchTargetDp,
-                visualSize = visualHandleSize,
+                touchSize = touchTargetDp / scaleFactor,
+                visualSize = visualHandleSize / scaleFactor,
                 onDragStart = {
                     interactiveState.isDraggingHandle = true
                     draggingHandle = HandleType.END
@@ -272,10 +272,9 @@ fun TextSelectionOverlay(
         }
 
         // ── Magnifier ───────────────────────────────────────────────────────
-        // The magnifier follows the snapped handle position (the actual selected character)
-        // rather than the raw finger position. This way, when the finger moves past the
-        // last available character and the handle stops, the magnifier stays with the handle.
-        val magnifierVisible = draggingHandle != HandleType.NONE
+        // Magnifier: only shown at zoom level 1x. When the user has zoomed in the content is
+        // already magnified, so the lens would add no value and may feel redundant/confusing.
+        val magnifierVisible = draggingHandle != HandleType.NONE && scaleFactor <= 1f
         val magnifierAnchor = when (draggingHandle) {
             HandleType.START -> snappedStart
             HandleType.END   -> snappedEnd

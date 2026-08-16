@@ -10,6 +10,7 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
@@ -106,29 +107,39 @@ fun VerticalPdfView(
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
 
-    // Navigation function - usar animateScrollToItem para LazyColumn
+    // Tracks a page navigation requested programmatically (e.g. thumbnail drawer).
+    // null means no pending navigation — the user is scrolling freely.
+    val pendingNavigationTarget = remember { mutableStateOf<Int?>(null) }
+
+    // Navigation function exposed to parent — sets the pending target and scrolls.
+    // Near pages (<= 2 away) use animateScrollToItem; distant jumps use scrollToItem to prevent unwanted intermediate scroll animations.
     val navigateToPage: (Int) -> Unit = { targetPage ->
         scope.launch {
-            listState.animateScrollToItem(targetPage)
-        }
-    }
-
-    // Restore page position when data is ready or navigation index changes
-    LaunchedEffect(optimalPageSizes.value, navigationState.currentPageIndex, loaderState.pageCount) {
-        val targetPage = navigationState.currentPageIndex.coerceIn(0, (loaderState.pageCount - 1).coerceAtLeast(0))
-        if (targetPage >= 0 && targetPage < loaderState.pageCount) {
-            if (listState.firstVisibleItemIndex != targetPage || optimalPageSizes.value != null) {
-                // If it's the initial load (pager at 0, target not 0), use scrollToItem for immediate jump
-                if (listState.firstVisibleItemIndex == 0 && targetPage != 0) {
-                    listState.scrollToItem(targetPage)
-                } else {
-                    listState.animateScrollToItem(targetPage)
-                }
+            pendingNavigationTarget.value = targetPage
+            val currentVisible = listState.firstVisibleItemIndex
+            val distance = kotlin.math.abs(targetPage - currentVisible)
+            if (distance > 2 || (currentVisible == 0 && targetPage != 0)) {
+                listState.scrollToItem(targetPage)
+            } else {
+                listState.animateScrollToItem(targetPage)
             }
+            // Consume the pending target after the scroll completes
+            pendingNavigationTarget.value = null
         }
     }
 
-    // Expose navigation state to parent
+    // Handle initial page restore when optimalPageSizes first becomes available.
+    // This only runs once when sizes are ready (or when the page count changes on re-load).
+    LaunchedEffect(optimalPageSizes.value, loaderState.pageCount) {
+        if (optimalPageSizes.value == null) return@LaunchedEffect
+        val targetPage = navigationState.currentPageIndex.coerceIn(0, (loaderState.pageCount - 1).coerceAtLeast(0))
+        if (targetPage > 0 && listState.firstVisibleItemIndex == 0) {
+            listState.scrollToItem(targetPage)
+        }
+    }
+
+    // Expose navigation state to parent — reports the current visible page and the
+    // navigate function so the parent (thumbnail drawer, search) can request scrolls.
     LaunchedEffect(listState.firstVisibleItemIndex, onNavigationStateChange) {
         val currentPage = listState.firstVisibleItemIndex
         onNavigationStateChange?.invoke(currentPage, navigateToPage)
@@ -401,6 +412,7 @@ fun VerticalPdfView(
                         // Keep translationY at 0 - vertical scrolling is handled by LazyColumn
                         translationY = 0f
                     },
+                contentPadding = PaddingValues(horizontal = PdfViewerConstants.VERTICAL_PAGE_HORIZONTAL_PADDING_DP.dp),
                 verticalArrangement = Arrangement.spacedBy(PdfViewerConstants.VERTICAL_PAGE_SPACING_DP.dp)
             ) {
                 items(

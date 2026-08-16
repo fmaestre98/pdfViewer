@@ -8,13 +8,12 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
@@ -27,10 +26,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import com.fmaestre98.pdfviewer.pdfViewer.model.PdfWord
@@ -507,38 +507,57 @@ fun HorizontalPdfView(
                 }
             }
         }
-        SwipeIndicator(pagerState, loaderState.pageCount)
+        SwipeDotsIndicator(pagerState = pagerState, pageCount = loaderState.pageCount)
     }
 }
 
-
-/**
- * Displays swipe indicator text based on current page position.
- */
+/** Compact dot-based page indicator. Non-interactive: touch events pass through to the PDF viewer. */
 @Composable
-private fun SwipeIndicator(pagerState: PagerState, pageCount: Int) {
-    val indicatorText = when {
-        pagerState.currentPage == 0 && pageCount > 1 -> "Swipe to the next page 👉"
-        pagerState.currentPage > 0 && pagerState.currentPage < pageCount - 1 -> "👈 Swipe 👉"
-        pagerState.currentPage == pageCount - 1 && pageCount > 1 -> "👈 Swipe back"
-        else -> ""
-    }
+private fun SwipeDotsIndicator(
+    pagerState: PagerState,
+    pageCount: Int,
+    modifier: Modifier = Modifier,
+    dotSize: Dp = 6.dp,
+    dotSpacing: Dp = 5.dp,
+    activeColor: Color = Color(0xFF007AFF),
+    inactiveColor: Color = Color(0x55007AFF),
+) {
+    if (pageCount <= 1) return
 
-    if (indicatorText.isNotEmpty()) {
-        Box(
+    // Show at most 7 dots to keep it compact; collapse if there are many pages.
+    val maxDots = 7
+    val visibleDots = minOf(pageCount, maxDots)
+    val currentPage = pagerState.currentPage
+
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(dotSize + 8.dp),  // total height ≈ 14dp — much less than the text indicator
+        contentAlignment = Alignment.Center
+    ) {
+        androidx.compose.foundation.Canvas(
+            // No pointerInput — events pass through to parent
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(
-                    bottom = PdfViewerConstants.SWIPE_INDICATOR_BOTTOM_PADDING_DP.dp,
-                    top = PdfViewerConstants.SWIPE_INDICATOR_TOP_PADDING_DP.dp
-                ),
-            contentAlignment = Alignment.Center
         ) {
-            Text(
-                text = indicatorText,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Bold
-            )
+            val totalWidth = visibleDots * dotSize.toPx() + (visibleDots - 1) * dotSpacing.toPx()
+            var x = center.x - totalWidth / 2f + dotSize.toPx() / 2f
+
+            // Map the current page index to the visible dot range when pageCount > maxDots
+            val activeDotIndex = if (pageCount <= maxDots) {
+                currentPage
+            } else {
+                // Clamp to 0..maxDots-1
+                ((currentPage.toFloat() / (pageCount - 1)) * (maxDots - 1)).toInt().coerceIn(0, maxDots - 1)
+            }
+
+            for (i in 0 until visibleDots) {
+                drawCircle(
+                    color = if (i == activeDotIndex) activeColor else inactiveColor,
+                    radius = dotSize.toPx() / 2f,
+                    center = Offset(x, center.y)
+                )
+                x += dotSize.toPx() + dotSpacing.toPx()
+            }
         }
     }
 }
