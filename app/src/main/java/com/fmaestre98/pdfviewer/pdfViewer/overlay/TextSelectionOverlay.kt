@@ -59,10 +59,10 @@ fun TextSelectionOverlay(
     val startCharCurrent = interactiveState.selectionStartChar
     val endCharCurrent = interactiveState.selectionEndChar
     if (startCharCurrent == null || endCharCurrent == null) return
-    val pageModel = interactiveState.getPageModel(interactiveState.selectionPageIndex) ?: return
+    if (!interactiveState.isSelectionActiveOnPage(pageIndex)) return
 
-    // Get optimized model for efficient lookups and drawing
-    val optimizedModel = interactiveState.getOptimizedPageModel(interactiveState.selectionPageIndex)
+    val pageModel = interactiveState.getPageModel(pageIndex) ?: return
+    val optimizedModel = interactiveState.getOptimizedPageModel(pageIndex)
 
     val density = LocalDensity.current
 
@@ -76,14 +76,17 @@ fun TextSelectionOverlay(
     // Painter instance
     val selectionPainter = remember { SelectionPainter() }
 
+    val startPage = interactiveState.selectionStartPageIndex
+    val endPage = interactiveState.selectionEndPageIndex
+    val showStartHandle = (startPage == pageIndex)
+    val showEndHandle = (endPage == pageIndex)
+
     // ── Magnifier bitmap ────────────────────────────────────────────────────
-    // We load the already-cached bitmap from the renderer when a handle drag starts.
     var magnifierBitmap by remember { mutableStateOf<ImageBitmap?>(null) }
 
     LaunchedEffect(pageRenderer, pageIndex, optimalPageSize) {
         if (pageRenderer != null && optimalPageSize != null) {
             val (w, h) = optimalPageSize
-            // renderPage hit the internal cache on subsequent calls, so this is fast.
             val originalSize = pageRenderer.getPageSize(pageIndex)
             if (originalSize != null) {
                 val (origW, origH) = originalSize
@@ -117,7 +120,6 @@ fun TextSelectionOverlay(
         )
     }
 
-    // Helper to compare order between chars
     fun compareChars(a: PdfChar, b: PdfChar): Int {
         val lineCmp = a.lineId.compareTo(b.lineId)
         if (lineCmp != 0) return lineCmp
@@ -126,31 +128,57 @@ fun TextSelectionOverlay(
         return a.id.compareTo(b.id)
     }
 
+    // Determine characters for this page's highlight
+    val pageFirstChar = optimizedModel?.firstChar ?: pageModel.coordinates.firstOrNull()?.words?.firstOrNull()?.characters?.firstOrNull()
+    val pageLastChar = optimizedModel?.lastChar ?: pageModel.coordinates.lastOrNull()?.words?.lastOrNull()?.characters?.lastOrNull()
+
+    val (drawStartChar, drawEndChar) = remember(startCharCurrent, endCharCurrent, startPage, endPage, pageIndex, pageFirstChar, pageLastChar) {
+        if (startPage == endPage) {
+            startCharCurrent to endCharCurrent
+        } else if (startPage < endPage) {
+            when (pageIndex) {
+                startPage -> startCharCurrent to pageLastChar
+                endPage -> pageFirstChar to endCharCurrent
+                else -> pageFirstChar to pageLastChar
+            }
+        } else {
+            when (pageIndex) {
+                startPage -> pageFirstChar to startCharCurrent
+                endPage -> endCharCurrent to pageLastChar
+                else -> pageFirstChar to pageLastChar
+            }
+        }
+    }
+
     // ── Handle visual positions (anchored to character bounds) ──────────────
     var snappedStart by remember { mutableStateOf(Offset.Zero) }
     var snappedEnd   by remember { mutableStateOf(Offset.Zero) }
 
-    // Virtual drag positions (accumulates deltas)
     var dragPositionStart by remember { mutableStateOf(Offset.Zero) }
     var dragPositionEnd   by remember { mutableStateOf(Offset.Zero) }
 
-    // Which handle is currently dragged
     var draggingHandle by remember { mutableStateOf(HandleType.NONE) }
 
-    // Sync visual positions when chars or overlay size changes
-    LaunchedEffect(startCharCurrent, endCharCurrent, overlaySize) {
+    LaunchedEffect(startCharCurrent, endCharCurrent, overlaySize, showStartHandle, showEndHandle) {
         val w = overlaySize.width.toFloat()
         val h = overlaySize.height.toFloat()
         if (w <= 0f || h <= 0f) return@LaunchedEffect
 
-        val startRect = pdfRectToScreen(startCharCurrent.rect, w, h)
-        snappedStart = startRect.bottomLeft
+        if (showStartHandle && startCharCurrent != null) {
+            val startRect = pdfRectToScreen(startCharCurrent.rect, w, h)
+            snappedStart = startRect.bottomLeft
+            if (draggingHandle != HandleType.START) dragPositionStart = snappedStart
+        } else {
+            snappedStart = Offset.Zero
+        }
 
-        val endRect = pdfRectToScreen(endCharCurrent.rect, w, h)
-        snappedEnd = endRect.bottomRight
-
-        if (draggingHandle != HandleType.START) dragPositionStart = snappedStart
-        if (draggingHandle != HandleType.END)   dragPositionEnd   = snappedEnd
+        if (showEndHandle && endCharCurrent != null) {
+            val endRect = pdfRectToScreen(endCharCurrent.rect, w, h)
+            snappedEnd = endRect.bottomRight
+            if (draggingHandle != HandleType.END) dragPositionEnd = snappedEnd
+        } else {
+            snappedEnd = Offset.Zero
+        }
     }
 
     Box(modifier = modifier) {
@@ -162,54 +190,23 @@ fun TextSelectionOverlay(
                 overlaySize = IntSize(w.toInt(), h.toInt())
             }
 
-            if (optimizedModel != null) {
-                val start = interactiveState.selectionStartChar
-                val end   = interactiveState.selectionEndChar
-                if (start != null && end != null) {
-                    val (minChar, maxChar) =
-                        if (compareChars(start, end) <= 0) start to end else end to start
-                    selectionPainter.drawSelection(
-                        canvas             = drawContext.canvas,
-                        startChar          = minChar,
-                        endChar            = maxChar,
-                        optimizedPageModel = optimizedModel,
-                        pageWidth          = pageWidth,
-                        pageHeight         = pageHeight,
-                        overlaySize        = size
-                    )
-                }
-            } else {
-                // Fallback (should be rare)
-                val allChars = mutableListOf<PdfChar>()
-                pageModel.coordinates.forEach { line ->
-                    line.words.forEach { word ->
-                        word.characters.forEach { ch -> allChars.add(ch) }
-                    }
-                }
-                val sChar = interactiveState.selectionStartChar
-                val eChar = interactiveState.selectionEndChar
-                if (sChar != null && eChar != null) {
-                    val startIndex = allChars.indexOf(sChar)
-                    val endIndex   = allChars.indexOf(eChar)
-                    if (startIndex >= 0 && endIndex >= 0) {
-                        val low  = min(startIndex, endIndex)
-                        val high = max(startIndex, endIndex)
-                        for (i in low..high) {
-                            val ch   = allChars[i]
-                            val rect = pdfRectToScreen(ch.rect, w, h)
-                            drawRect(
-                                color   = PdfViewerTheme.selectionHighlight,
-                                topLeft = rect.topLeft,
-                                size    = rect.size
-                            )
-                        }
-                    }
-                }
+            if (optimizedModel != null && drawStartChar != null && drawEndChar != null) {
+                val (minChar, maxChar) =
+                    if (compareChars(drawStartChar, drawEndChar) <= 0) drawStartChar to drawEndChar else drawEndChar to drawStartChar
+                selectionPainter.drawSelection(
+                    canvas             = drawContext.canvas,
+                    startChar          = minChar,
+                    endChar            = maxChar,
+                    optimizedPageModel = optimizedModel,
+                    pageWidth          = pageWidth,
+                    pageHeight         = pageHeight,
+                    overlaySize        = size
+                )
             }
         }
 
         // ── Selection Handles ───────────────────────────────────────────────
-        if (snappedStart != Offset.Zero) {
+        if (showStartHandle && snappedStart != Offset.Zero) {
             SelectionHandleTeardrop(
                 isStart = true,
                 position = snappedStart,
@@ -222,8 +219,6 @@ fun TextSelectionOverlay(
                     dragPositionStart = snappedStart
                 },
                 onDragDelta = { delta ->
-                    // positionChange() already accounts for ancestor graphicsLayer
-                    // transforms — no need to divide by scaleFactor.
                     dragPositionStart += delta
                     gestureHandler.updateSelectionHandle(
                         isStart    = true,
@@ -234,12 +229,6 @@ fun TextSelectionOverlay(
                     )
                 },
                 onDragEnd = {
-                    val s = interactiveState.selectionStartChar
-                    val e = interactiveState.selectionEndChar
-                    if (s != null && e != null && compareChars(s, e) > 0) {
-                        interactiveState.updateSelectionStart(e)
-                        interactiveState.updateSelectionEnd(s)
-                    }
                     interactiveState.isDraggingHandle = false
                     draggingHandle = HandleType.NONE
                     gestureHandler.notifyHandleDragEnded()
@@ -247,7 +236,7 @@ fun TextSelectionOverlay(
             )
         }
 
-        if (snappedEnd != Offset.Zero) {
+        if (showEndHandle && snappedEnd != Offset.Zero) {
             SelectionHandleTeardrop(
                 isStart = false,
                 position = snappedEnd,
@@ -260,8 +249,6 @@ fun TextSelectionOverlay(
                     dragPositionEnd = snappedEnd
                 },
                 onDragDelta = { delta ->
-                    // positionChange() already accounts for ancestor graphicsLayer
-                    // transforms — no need to divide by scaleFactor.
                     dragPositionEnd += delta
                     gestureHandler.updateSelectionHandle(
                         isStart    = false,
@@ -272,12 +259,6 @@ fun TextSelectionOverlay(
                     )
                 },
                 onDragEnd = {
-                    val s = interactiveState.selectionStartChar
-                    val e = interactiveState.selectionEndChar
-                    if (s != null && e != null && compareChars(s, e) > 0) {
-                        interactiveState.updateSelectionStart(e)
-                        interactiveState.updateSelectionEnd(s)
-                    }
                     interactiveState.isDraggingHandle = false
                     draggingHandle = HandleType.NONE
                     gestureHandler.notifyHandleDragEnded()

@@ -97,7 +97,24 @@ class PdfInteractiveState {
     var isKaraokeMode by mutableStateOf(false)
     var isTtsAvailable by mutableStateOf(false)
 
-    var selectionPageIndex by mutableIntStateOf(-1)
+    var selectionStartPageIndex by mutableIntStateOf(-1)
+    var selectionEndPageIndex by mutableIntStateOf(-1)
+
+    var selectionPageIndex: Int
+        get() = if (selectionStartPageIndex != -1) selectionStartPageIndex else -1
+        set(value) {
+            selectionStartPageIndex = value
+            selectionEndPageIndex = value
+        }
+
+    val isSelectionActiveOnPage: (Int) -> Boolean = { pageIndex ->
+        if (selectionStartPageIndex == -1 || selectionEndPageIndex == -1) false
+        else {
+            val minP = kotlin.math.min(selectionStartPageIndex, selectionEndPageIndex)
+            val maxP = kotlin.math.max(selectionStartPageIndex, selectionEndPageIndex)
+            pageIndex in minP..maxP
+        }
+    }
 
     // Persistent highlights data (page index -> list of highlight rects)
     private var highlightsMap by mutableStateOf<Map<Int, List<HighlightData>>>(emptyMap())
@@ -129,32 +146,79 @@ class PdfInteractiveState {
         isTtsAvailable = available
     }
 
-    // CAMBIO: Lógica para obtener el texto plano seleccionado
-    fun getSelectedText(): String {
-        val start = selectionStartChar ?: return ""
-        val end = selectionEndChar ?: return ""
-        val model = pageModels[selectionPageIndex] ?: return ""
-
-        // Lógica simplificada: Iterar sobre palabras y extraer caracteres en rango
-        val sb = StringBuilder()
-        var recording = false
-
-        // Esta es una implementación lineal simple.
-        // Para mayor eficiencia, se podrían buscar índices, pero esto funciona bien para páginas normales.
+    private fun isCharBeforeOrEqual(a: PdfChar, b: PdfChar, model: PageModel): Boolean {
+        if (a === b || a.id == b.id) return true
         model.coordinates.forEach { line ->
             line.words.forEach { word ->
                 word.characters.forEach { char ->
-                    if (char == start) recording = true
-                    if (recording) sb.append(char.text)
-                    if (char == end) {
-                        recording = false
-                        return sb.toString()
-                    }
+                    if (char === a || char.id == a.id) return true
+                    if (char === b || char.id == b.id) return false
                 }
-                // Agregar espacio entre palabras si estamos grabando y no es el final
-                if (recording) sb.append(" ")
             }
-            if (recording) sb.append("\n")
+        }
+        return true
+    }
+
+    fun getSelectedText(): String {
+        val startChar = selectionStartChar ?: return ""
+        val endChar = selectionEndChar ?: return ""
+        val startPage = selectionStartPageIndex
+        val endPage = selectionEndPageIndex
+        if (startPage < 0 || endPage < 0) return ""
+
+        val sb = StringBuilder()
+
+        if (startPage == endPage) {
+            val model = pageModels[startPage] ?: return ""
+            val isStartFirst = isCharBeforeOrEqual(startChar, endChar, model)
+            val first = if (isStartFirst) startChar else endChar
+            val last = if (isStartFirst) endChar else startChar
+
+            var recording = false
+            model.coordinates.forEach { line ->
+                line.words.forEach { word ->
+                    word.characters.forEach { char ->
+                        if (char === first || char.id == first.id) recording = true
+                        if (recording) sb.append(char.text)
+                        if (char === last || char.id == last.id) {
+                            recording = false
+                            return sb.toString()
+                        }
+                    }
+                    if (recording) sb.append(" ")
+                }
+                if (recording) sb.append("\n")
+            }
+            return sb.toString()
+        }
+
+        // Multi-page extraction
+        val isForward = startPage < endPage
+        val actualStartPage = if (isForward) startPage else endPage
+        val actualEndPage = if (isForward) endPage else startPage
+        val actualStartChar = if (isForward) startChar else endChar
+        val actualEndChar = if (isForward) endChar else startChar
+
+        for (p in actualStartPage..actualEndPage) {
+            val model = pageModels[p] ?: continue
+            var recording = (p > actualStartPage)
+
+            model.coordinates.forEach { line ->
+                line.words.forEach { word ->
+                    word.characters.forEach { char ->
+                        if (p == actualStartPage && (char === actualStartChar || char.id == actualStartChar.id)) recording = true
+                        if (recording) sb.append(char.text)
+                        if (p == actualEndPage && (char === actualEndChar || char.id == actualEndChar.id)) {
+                            recording = false
+                        }
+                    }
+                    if (recording) sb.append(" ")
+                }
+                if (recording) sb.append("\n")
+            }
+            if (p < actualEndPage && sb.isNotEmpty()) {
+                sb.append("\n")
+            }
         }
         return sb.toString()
     }
@@ -162,23 +226,58 @@ class PdfInteractiveState {
     fun activateTextSelection(word: PdfWord, pageIndex: Int) {
         selectionStartChar = word.characters.firstOrNull()
         selectionEndChar = word.characters.lastOrNull()
-        selectionPageIndex = pageIndex
+        selectionStartPageIndex = pageIndex
+        selectionEndPageIndex = pageIndex
         isDraggingHandle = false
     }
 
     fun deactivateTextSelection() {
         selectionStartChar = null
         selectionEndChar = null
-        selectionPageIndex = -1 // Reset
+        selectionStartPageIndex = -1
+        selectionEndPageIndex = -1
         isDraggingHandle = false
     }
 
-    fun updateSelectionStart(char: PdfChar) {
-        selectionStartChar = char
+    fun isPositionBeforeOrEqual(pageA: Int, charA: PdfChar, pageB: Int, charB: PdfChar): Boolean {
+        if (pageA < pageB) return true
+        if (pageA > pageB) return false
+        val model = pageModels[pageA] ?: return true
+        return isCharBeforeOrEqual(charA, charB, model)
     }
 
-    fun updateSelectionEnd(char: PdfChar) {
-        selectionEndChar = char
+    fun updateSelectionStart(char: PdfChar, pageIndex: Int = selectionStartPageIndex) {
+        val currentEndChar = selectionEndChar
+        val currentEndPage = selectionEndPageIndex
+        val targetPage = if (pageIndex >= 0) pageIndex else selectionStartPageIndex
+
+        if (currentEndChar != null && currentEndPage >= 0 && !isPositionBeforeOrEqual(targetPage, char, currentEndPage, currentEndChar)) {
+            // Crossed: start handle dragged past end handle. Swap!
+            selectionStartChar = currentEndChar
+            selectionStartPageIndex = currentEndPage
+            selectionEndChar = char
+            selectionEndPageIndex = targetPage
+        } else {
+            selectionStartChar = char
+            if (targetPage >= 0) selectionStartPageIndex = targetPage
+        }
+    }
+
+    fun updateSelectionEnd(char: PdfChar, pageIndex: Int = selectionEndPageIndex) {
+        val currentStartChar = selectionStartChar
+        val currentStartPage = selectionStartPageIndex
+        val targetPage = if (pageIndex >= 0) pageIndex else selectionEndPageIndex
+
+        if (currentStartChar != null && currentStartPage >= 0 && !isPositionBeforeOrEqual(currentStartPage, currentStartChar, targetPage, char)) {
+            // Crossed: end handle dragged before start handle. Swap!
+            selectionEndChar = currentStartChar
+            selectionEndPageIndex = currentStartPage
+            selectionStartChar = char
+            selectionStartPageIndex = targetPage
+        } else {
+            selectionEndChar = char
+            if (targetPage >= 0) selectionEndPageIndex = targetPage
+        }
     }
 
     /**

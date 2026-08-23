@@ -249,7 +249,15 @@ object PdfCoordinateHelpers {
                 }
             }
         }
-        return closestChar
+        if (closestChar != null) return closestChar
+
+        val lineChars = nearestLine.words.flatMap { it.characters }
+        if (lineChars.isEmpty()) return null
+        return when {
+            x > nearestLine.rect.right -> lineChars.last()
+            x < nearestLine.rect.left -> lineChars.first()
+            else -> lineChars.minByOrNull { kotlin.math.abs(it.rect.centerX() - x) }
+        }
     }
     
     /**

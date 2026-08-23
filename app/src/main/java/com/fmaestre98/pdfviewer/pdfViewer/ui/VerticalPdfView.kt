@@ -8,6 +8,7 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
+import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
@@ -22,6 +23,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -180,6 +182,11 @@ fun VerticalPdfView(
     // Create gesture orchestrator
     val gestureOrchestrator = remember { GestureOrchestrator() }
 
+    var lastDragScreenY by remember { mutableFloatStateOf(-1f) }
+    var lastDragIsStart by remember { mutableStateOf(false) }
+    var lastDragX by remember { mutableFloatStateOf(0f) }
+    var lastDragY by remember { mutableFloatStateOf(0f) }
+
     // Create interaction listener that implements business logic for vertical view
     val interactionListener = remember(
         pagerState.currentPage,
@@ -193,8 +200,12 @@ fun VerticalPdfView(
     ) {
         object : PdfInteractionListener {
             override fun onPageTapped(x: Float, y: Float) {
-                // Dismiss text selection on tap, unless tap is on a handle or part of zoom/drag
-                if (interactiveState.isTextSelectionActive && gestureOrchestrator.shouldDismissSelectionOnTap()) {
+                // Dismiss text selection on tap, unless tap is on a handle or part of zoom/drag/scroll
+                if (interactiveState.isTextSelectionActive &&
+                    !interactiveState.isDraggingHandle &&
+                    !listState.isScrollInProgress &&
+                    gestureOrchestrator.shouldDismissSelectionOnTap(interactiveState)
+                ) {
                     interactiveState.deactivateTextSelection()
                     onSelectionCleared?.invoke()
                 }
@@ -206,26 +217,17 @@ fun VerticalPdfView(
                     return
                 }
                 
-                // 1. DES-ZOOM: Convertir coordenada de pantalla (Zoomed) a coordenada de LazyColumn (Unzoomed)
-                // El LazyColumn tiene un graphicsLayer con scale y translationX.
-                // Necesitamos revertir esa transformación para saber dónde se tocó en la "superficie" de la lista.
                 val zoom = interactiveState.zoomLevel
                 val panX = interactiveState.offsetX
 
-                // Centro de la pantalla para el pivote del zoom
                 val centerX = containerSize.value.width / 2f
                 val centerY = containerSize.value.height / 2f
 
-                // Fórmula inversa del zoom centrado:
-                // screenX = (localX - centerX) * zoom + centerX + panX
-                // localX = (screenX - panX - centerX) / zoom + centerX
                 val unzoomedX = (x - panX - centerX) / zoom + centerX
                 val unzoomedY = (y - centerY) / zoom + centerY
 
-                // 2. HIT TEST: Encontrar qué item de la LazyColumn está bajo unzoomedY
                 val visibleItems = listState.layoutInfo.visibleItemsInfo
 
-                // Buscamos el item cuyo rango vertical contenga el toque
                 val hitItem = visibleItems.find { item ->
                     val itemTop = item.offset
                     val itemBottom = item.offset + item.size
@@ -236,58 +238,84 @@ fun VerticalPdfView(
                 val optimalSize = optimalPageSizes.value?.getOrNull(targetPageIndex) ?: return
                 val (pageWidth, pageHeight) = optimalSize
 
-                // 3. CALCULAR COORDENADAS RELATIVAS AL ITEM
-                // Restamos el offset del item para obtener Y relativo a la imagen de la página
                 val localItemY = unzoomedY - hitItem.offset
 
-                // 4. CONVERTIR A PDF
                 val (pageX, pageY) = PdfCoordinateHelpers.convertToPageCoordinatesVertical(
                     tapX = unzoomedX,
-                    tapY = localItemY, // Usamos la Y local
+                    tapY = localItemY,
                     pageWidth = pageWidth,
                     pageHeight = pageHeight,
                     viewWidth = containerSize.value.width
                 )
 
-                // 5. OBTENER MODELO CORRECTO
-                // IMPORTANTE: Cargar el modelo de la página TOCADA, no de la "actual"
-                // Si el modelo ya está cargado en interactiveState y es el mismo índice, lo usamos.
-                // Si no, intentamos obtenerlo del renderer (síncrono si está en caché o rápido)
                 val hitPageModel = interactiveState.getPageModel(targetPageIndex)
-                // 6. BUSCAR PALABRA
                 val word = hitPageModel?.let { PdfCoordinateHelpers.findWordInModel(it, pageX, pageY) }
-                println("Vertical LongPress Page $targetPageIndex -> Screen($x, $y) Unzoomed($unzoomedX, $unzoomedY) PDF($pageX, $pageY) Word: ${word?.text}")
 
                 if (word != null) {
-                    // Replace previous selection with new one (per user preference)
                     interactiveState.activateTextSelection(word, targetPageIndex)
                     onWordSelected?.invoke(word)
                 }
             }
 
             override fun onSelectionHandleDragged(isStart: Boolean, x: Float, y: Float, viewWidth: Int, viewHeight: Int) {
-                val pageModel = interactiveState.getPageModel(interactiveState.selectionPageIndex) ?: return
+                val sourcePage = if (isStart) interactiveState.selectionStartPageIndex else interactiveState.selectionEndPageIndex
+                if (sourcePage < 0) return
+
                 interactiveState.isDraggingHandle = true
+                val visibleItems = listState.layoutInfo.visibleItemsInfo
+                val sourceItem = visibleItems.find { it.index == sourcePage }
 
-                val optimalSize = optimalPageSizes.value?.getOrNull(interactiveState.selectionPageIndex) ?: return
-                val pageWidth = optimalSize.first.toFloat()
-                val pageHeight = optimalSize.second.toFloat()
-
-                // In VerticalPdfView, TextSelectionOverlay matches the exact size of the page item.
-                // Therefore, x and y passed from the handle overlay are already in page pixel coordinates.
-                val pdfX = x.coerceIn(0f, pageWidth)
-                val pdfY = y.coerceIn(0f, pageHeight)
-
-                // Find the new char
-                val optimizedModel = interactiveState.getOptimizedPageModel(interactiveState.selectionPageIndex)
-                val newChar = if (optimizedModel != null) {
-                    PdfCoordinateHelpers.findCharInModel(optimizedModel, pdfX, pdfY)
+                // Calculate unzoomed Y position in LazyColumn content
+                val layoutY = if (sourceItem != null) {
+                    sourceItem.offset + y
                 } else {
-                    PdfCoordinateHelpers.findCharInModel(pageModel, pdfX, pdfY)
+                    val firstVis = visibleItems.firstOrNull() ?: return
+                    firstVis.offset + y
                 }
+
+                val firstVisOffset = visibleItems.firstOrNull()?.offset ?: 0
+                lastDragIsStart = isStart
+                lastDragX = x
+                lastDragY = y
+                lastDragScreenY = (layoutY - firstVisOffset)
+
+                // Find target item in visible items matching layoutY
+                var targetItem = visibleItems.find { item ->
+                    layoutY >= item.offset && layoutY <= item.offset + item.size
+                }
+
+                if (targetItem == null && visibleItems.isNotEmpty()) {
+                    if (layoutY < visibleItems.first().offset) {
+                        targetItem = visibleItems.first()
+                    } else if (layoutY > visibleItems.last().offset + visibleItems.last().size) {
+                        targetItem = visibleItems.last()
+                    }
+                }
+
+                if (targetItem == null) return
+                val targetPageIndex = targetItem.index
+                val targetOptimalSize = optimalPageSizes.value?.getOrNull(targetPageIndex) ?: return
+                val targetPageWidth = targetOptimalSize.first.toFloat()
+                val targetPageHeight = targetOptimalSize.second.toFloat()
+
+                val targetLocalY = (layoutY - targetItem.offset).coerceIn(0f, targetPageHeight)
+                val targetLocalX = x.coerceIn(0f, targetPageWidth)
+
+                val targetOptimizedModel = interactiveState.getOptimizedPageModel(targetPageIndex)
+                val targetPageModel = interactiveState.getPageModel(targetPageIndex)
+
+                val newChar = if (targetOptimizedModel != null) {
+                    PdfCoordinateHelpers.findCharInModel(targetOptimizedModel, targetLocalX, targetLocalY)
+                } else if (targetPageModel != null) {
+                    PdfCoordinateHelpers.findCharInModel(targetPageModel, targetLocalX, targetLocalY)
+                } else null
+
                 if (newChar != null) {
-                    if (isStart) interactiveState.updateSelectionStart(newChar)
-                    else interactiveState.updateSelectionEnd(newChar)
+                    if (isStart) {
+                        interactiveState.updateSelectionStart(newChar, targetPageIndex)
+                    } else {
+                        interactiveState.updateSelectionEnd(newChar, targetPageIndex)
+                    }
                 }
             }
 
@@ -349,6 +377,36 @@ fun VerticalPdfView(
             
             override fun onHandleDragEnded() {
                 gestureOrchestrator.onHandleDragEnded()
+            }
+        }
+    }
+
+    // Automatic Edge Autoscroll when dragging handles near top or bottom screen boundaries
+    LaunchedEffect(interactiveState.isDraggingHandle, lastDragScreenY) {
+        if (!interactiveState.isDraggingHandle) return@LaunchedEffect
+        val edgeThresholdPx = with(density) { 80.dp.toPx() }
+        val maxScrollStepPx = with(density) { 12.dp.toPx() }
+
+        val screenH = containerSize.value.height
+        if (screenH > 0 && lastDragScreenY >= 0) {
+            var scrollDelta = 0f
+            if (lastDragScreenY < edgeThresholdPx) {
+                val factor = (1f - (lastDragScreenY / edgeThresholdPx)).coerceIn(0f, 1f)
+                scrollDelta = -maxScrollStepPx * factor
+            } else if (lastDragScreenY > screenH - edgeThresholdPx) {
+                val factor = ((lastDragScreenY - (screenH - edgeThresholdPx)) / edgeThresholdPx).coerceIn(0f, 1f)
+                scrollDelta = maxScrollStepPx * factor
+            }
+
+            if (scrollDelta != 0f) {
+                listState.scrollBy(scrollDelta)
+                interactionListener.onSelectionHandleDragged(
+                    isStart = lastDragIsStart,
+                    x = lastDragX,
+                    y = lastDragY,
+                    viewWidth = 0,
+                    viewHeight = 0
+                )
             }
         }
     }
@@ -443,7 +501,7 @@ fun VerticalPdfView(
                         // Text Selection Overlay (Handles only)
                         if (optimalSize != null &&
                             interactiveState.isTextSelectionActive &&
-                            interactiveState.selectionPageIndex == pageIndex
+                            interactiveState.isSelectionActiveOnPage(pageIndex)
                         ) {
                             TextSelectionOverlay(
                                 modifier = Modifier.matchParentSize(),
@@ -488,33 +546,22 @@ fun VerticalPdfView(
 
             // Floating Text Selection Menu
             if (interactiveState.isTextSelectionActive && !interactiveState.isDraggingHandle && !listState.isScrollInProgress) {
-                val selectionPage = interactiveState.selectionPageIndex
-                // Find if the selection page is currently visible in the LazyColumn
-                val visibleItem = listState.layoutInfo.visibleItemsInfo.find { it.index == selectionPage }
+                val startPage = interactiveState.selectionStartPageIndex
+                val visibleItem = listState.layoutInfo.visibleItemsInfo.find { it.index == startPage } ?: listState.layoutInfo.visibleItemsInfo.firstOrNull()
 
                 if (visibleItem != null) {
+                    val menuPage = visibleItem.index
                     val startChar = interactiveState.selectionStartChar
                     val endChar = interactiveState.selectionEndChar
-                    val optimalSize = optimalPageSizes.value?.getOrNull(selectionPage)
+                    val optimalSize = optimalPageSizes.value?.getOrNull(menuPage)
 
                     if (startChar != null && endChar != null && optimalSize != null) {
                         val (pageW, pageH) = optimalSize
-                        // The item's offset relative to the LazyColumn viewport start
                         val itemOffset = visibleItem.offset
 
-                        // Convert to screen coordinates using the helper for Vertical view
-                        val startScreen = PdfCoordinateHelpers.convertToScreenCoordinatesVertical(
-                            pdfPoint = Offset(startChar.rect.top, startChar.rect.bottom),
-                            pageWidth = pageW,
-                            pageHeight = pageH,
-                            itemOffset = itemOffset,
-                            screenWidth = containerSize.value.width,
-                            screenHeight = containerSize.value.height,
-                            zoomLevel = interactiveState.zoomLevel,
-                            offsetX = interactiveState.offsetX
-                        )
-                        val endScreen = PdfCoordinateHelpers.convertToScreenCoordinatesVertical(
-                            pdfPoint = Offset(endChar.rect.top, endChar.rect.bottom),
+                        val targetCharForMenu = if (interactiveState.selectionStartPageIndex == menuPage) startChar else endChar
+                        val charScreenPos = PdfCoordinateHelpers.convertToScreenCoordinatesVertical(
+                            pdfPoint = Offset(targetCharForMenu.rect.left, targetCharForMenu.rect.top),
                             pageWidth = pageW,
                             pageHeight = pageH,
                             itemOffset = itemOffset,
@@ -524,29 +571,19 @@ fun VerticalPdfView(
                             offsetX = interactiveState.offsetX
                         )
 
-
-                        val selectionTop = min(startScreen.y, endScreen.y)
-                        val selectionBottom = max(startScreen.y, endScreen.y)
-                        val selectionCenterX = (startScreen.x + endScreen.x) / 2f
-                        
                         val screenW = containerSize.value.width
                         val screenH = containerSize.value.height
-                        
-                        // Initial position (centered above selection)
-                        var menuX = selectionCenterX - (menuSize.width / 2f)
-                        var menuY = selectionTop - (menuSize.height + 60f) // 60f margin equivalent
+
+                        var menuX = charScreenPos.x - (menuSize.width / 2f)
+                        var menuY = charScreenPos.y - (menuSize.height + 60f)
 
                         val padding = with(density) { 16.dp.toPx() }
-
-                        // Clamp X
                         if (menuSize.width > 0) {
-                             menuX = menuX.coerceIn(padding, screenW - menuSize.width - padding)
+                            menuX = menuX.coerceIn(padding, screenW - menuSize.width - padding)
                         }
-
-                        // Clamp Y
                         if (menuSize.height > 0) {
                             if (menuY < padding) {
-                                menuY = selectionBottom + 20f // Show below if no space on top
+                                menuY = charScreenPos.y + 40f
                             }
                             menuY = menuY.coerceIn(padding, screenH - menuSize.height - padding)
                         }
@@ -562,7 +599,7 @@ fun VerticalPdfView(
                                 onSelectionCleared?.invoke()
                             },
                             onHighlightRequested = { color ->
-                                onHighlightRequested?.invoke(color, selectionPage, interactiveState.getSelectedText())
+                                onHighlightRequested?.invoke(color, menuPage, interactiveState.getSelectedText())
                                 interactiveState.deactivateTextSelection()
                                 onSelectionCleared?.invoke()
                             },

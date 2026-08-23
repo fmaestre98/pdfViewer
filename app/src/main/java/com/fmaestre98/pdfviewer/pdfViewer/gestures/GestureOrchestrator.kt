@@ -95,8 +95,9 @@ class GestureOrchestrator {
      * - Any gesture is currently active (zoom/pan/handle drag)
      * - A handle drag ended very recently (within grace period)
      */
-    fun shouldDismissSelectionOnTap(): Boolean {
+    fun shouldDismissSelectionOnTap(interactiveState: PdfInteractiveState? = null): Boolean {
         if (currentGesture != ActiveGesture.NONE) return false
+        if (interactiveState?.isDraggingHandle == true) return false
         
         // Don't dismiss if a handle drag ended very recently
         val elapsed = SystemClock.elapsedRealtime() - handleDragEndedAtMs

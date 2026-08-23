@@ -55,9 +55,18 @@ class OptimizedPageModel(val pageModel: PageModel) {
         return grid
     }
     
+    val firstChar: PdfChar? by lazy {
+        pageModel.coordinates.firstOrNull()?.words?.firstOrNull()?.characters?.firstOrNull()
+    }
+
+    val lastChar: PdfChar? by lazy {
+        pageModel.coordinates.lastOrNull()?.words?.lastOrNull()?.characters?.lastOrNull()
+    }
+
     /**
      * Finds the character nearest to the given coordinates using the spatial grid.
      * Search is limited to the target cell and its immediate neighbors (3x3 area).
+     * Includes fallback for whitespace and margins on short lines.
      */
     fun findCharNear(x: Float, y: Float, tolerance: Float = 40f): PdfChar? {
         val gridSize = 10
@@ -91,7 +100,24 @@ class OptimizedPageModel(val pageModel: PageModel) {
                 }
             }
         }
-        return closestChar
+        if (closestChar != null) return closestChar
+
+        // Fallback for whitespace / margins / short lines:
+        if (pageModel.coordinates.isEmpty()) return null
+        val bestLine = pageModel.coordinates.minByOrNull { line ->
+            if (y >= line.rect.top && y <= line.rect.bottom) 0f
+            else if (y < line.rect.top) line.rect.top - y
+            else y - line.rect.bottom
+        } ?: return null
+
+        val lineChars = bestLine.words.flatMap { it.characters }
+        if (lineChars.isEmpty()) return null
+
+        return when {
+            x > bestLine.rect.right -> lineChars.last()
+            x < bestLine.rect.left -> lineChars.first()
+            else -> lineChars.minByOrNull { abs(it.rect.centerX() - x) }
+        }
     }
     
     /**
