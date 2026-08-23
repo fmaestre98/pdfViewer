@@ -87,8 +87,18 @@ fun PageThumbnailDrawer(
 ) {
     val drawerState = rememberDrawerState(initialValue = androidx.compose.material3.DrawerValue.Closed)
 
+    val density = LocalDensity.current
+    val thumbnailWidth = with(density) { 200.dp.toPx().toInt() }
+    val thumbnailHeight = with(density) { 300.dp.toPx().toInt() }
+    val listState = rememberLazyListState(
+        initialFirstVisibleItemIndex = currentPage.coerceIn(0, (pageCount - 1).coerceAtLeast(0))
+    )
+
     LaunchedEffect(isOpen) {
         if (isOpen) {
+            if (currentPage in 0 until pageCount) {
+                listState.scrollToItem(currentPage)
+            }
             drawerState.open()
         } else {
             drawerState.close()
@@ -101,15 +111,10 @@ fun PageThumbnailDrawer(
         }
     }
 
-    val density = LocalDensity.current
-    val thumbnailWidth = with(density) { 200.dp.toPx().toInt() }
-    val thumbnailHeight = with(density) { 300.dp.toPx().toInt() }
-    val listState = rememberLazyListState()
-
-    // Scroll to current page when drawer opens
+    // Ensure list stays positioned on current page when drawer opens or page changes
     LaunchedEffect(drawerState.currentValue, currentPage) {
         if (drawerState.currentValue == androidx.compose.material3.DrawerValue.Open && currentPage >= 0 && currentPage < pageCount) {
-            listState.animateScrollToItem(currentPage)
+            listState.scrollToItem(currentPage)
         }
     }
 
@@ -175,7 +180,10 @@ fun PageThumbnailDrawer(
                             state = listState,
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            itemsIndexed((0 until pageCount).toList()) { index, pageIndex ->
+                            items(
+                                count = pageCount,
+                                key = { index -> index }
+                            ) { pageIndex ->
                                 ThumbnailItem(
                                     pageIndex = pageIndex,
                                     pageRenderer = pageRenderer,

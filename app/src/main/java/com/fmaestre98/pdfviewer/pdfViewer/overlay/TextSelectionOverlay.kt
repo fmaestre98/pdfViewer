@@ -222,8 +222,9 @@ fun TextSelectionOverlay(
                     dragPositionStart = snappedStart
                 },
                 onDragDelta = { delta ->
-                    val scaledDelta = delta / scaleFactor
-                    dragPositionStart += scaledDelta
+                    // positionChange() already accounts for ancestor graphicsLayer
+                    // transforms — no need to divide by scaleFactor.
+                    dragPositionStart += delta
                     gestureHandler.updateSelectionHandle(
                         isStart    = true,
                         x          = dragPositionStart.x,
@@ -233,6 +234,12 @@ fun TextSelectionOverlay(
                     )
                 },
                 onDragEnd = {
+                    val s = interactiveState.selectionStartChar
+                    val e = interactiveState.selectionEndChar
+                    if (s != null && e != null && compareChars(s, e) > 0) {
+                        interactiveState.updateSelectionStart(e)
+                        interactiveState.updateSelectionEnd(s)
+                    }
                     interactiveState.isDraggingHandle = false
                     draggingHandle = HandleType.NONE
                     gestureHandler.notifyHandleDragEnded()
@@ -253,8 +260,9 @@ fun TextSelectionOverlay(
                     dragPositionEnd = snappedEnd
                 },
                 onDragDelta = { delta ->
-                    val scaledDelta = delta / scaleFactor
-                    dragPositionEnd += scaledDelta
+                    // positionChange() already accounts for ancestor graphicsLayer
+                    // transforms — no need to divide by scaleFactor.
+                    dragPositionEnd += delta
                     gestureHandler.updateSelectionHandle(
                         isStart    = false,
                         x          = dragPositionEnd.x,
@@ -264,6 +272,12 @@ fun TextSelectionOverlay(
                     )
                 },
                 onDragEnd = {
+                    val s = interactiveState.selectionStartChar
+                    val e = interactiveState.selectionEndChar
+                    if (s != null && e != null && compareChars(s, e) > 0) {
+                        interactiveState.updateSelectionStart(e)
+                        interactiveState.updateSelectionEnd(s)
+                    }
                     interactiveState.isDraggingHandle = false
                     draggingHandle = HandleType.NONE
                     gestureHandler.notifyHandleDragEnded()
@@ -324,7 +338,7 @@ private fun SelectionHandleTeardrop(
             }
             .size(touchSize)
             // Unified gesture: claims the touch immediately then tracks drag deltas.
-            .pointerInput(isStart) {
+            .pointerInput(Unit) {
                 awaitEachGesture {
                     val down = awaitFirstDown(requireUnconsumed = false)
                     down.consume()   // Claim touch to block parent gestures
