@@ -359,8 +359,6 @@ fun VerticalPdfView(
     val clipboardManager = LocalClipboardManager.current
     var menuSize by remember { mutableStateOf(IntSize.Zero) }
 
-    val snapFlingBehavior = androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior(lazyListState = listState)
-
     if (optimalPageSizes.value == null) {
         Box(
             modifier = modifier.fillMaxSize(),
@@ -374,7 +372,6 @@ fun VerticalPdfView(
         ) {
             LazyColumn(
                 state = listState,
-                flingBehavior = snapFlingBehavior,
                 modifier = Modifier
                     .fillMaxSize()
                     .onSizeChanged { size ->
