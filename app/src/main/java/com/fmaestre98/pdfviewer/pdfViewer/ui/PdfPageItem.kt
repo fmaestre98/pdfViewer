@@ -44,6 +44,19 @@ import com.fmaestre98.pdfviewer.pdfViewer.rendering.PdfPageRenderer
  * @param drawableResName Drawable resource name for first page cover image
  * @param assetPath Asset path for shared element key
  */
+private val DarkReaderColorMatrix = androidx.compose.ui.graphics.ColorMatrix(
+    floatArrayOf(
+        -1f,  0f,  0f, 0f, 255f,
+         0f, -1f,  0f, 0f, 255f,
+         0f,  0f, -1f, 0f, 255f,
+         0f,  0f,  0f, 1f,   0f
+    )
+)
+
+/**
+ * Composable that renders a single PDF page.
+ * Handles asynchronous rendering with loading state and optimal size calculation.
+ */
 @OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 fun PdfPageItem(
@@ -55,6 +68,8 @@ fun PdfPageItem(
     animatedVisibilityScope: AnimatedVisibilityScope? = null,
     drawableResName: String? = null,
     assetPath: String? = null,
+    isDarkReaderMode: Boolean = false,
+    searchHighlights: List<android.graphics.RectF> = emptyList(),
 ) {
     val context = LocalContext.current
     
@@ -76,15 +91,11 @@ fun PdfPageItem(
     var bitmap by remember(pageIndex, optimalSize) { 
         mutableStateOf<Bitmap?>(null) 
     }
-    // If we have drawable for first page, we can show it immediately (no loading state)
     var isLoading by remember { 
         mutableStateOf(!hasDrawable) 
     }
 
-    // Render page with optimal size
-    // If we have the drawable for page 0, we still want to load the high-res PDF version
     LaunchedEffect(pageIndex, pageRenderer, optimalSize) {
-        // Load high-res PDF version (will replace drawable if it exists)
         if (pageRenderer != null && optimalSize != null) {
             val renderedBitmap = renderPageWithOptimalSize(
                 pageRenderer = pageRenderer,
@@ -99,28 +110,29 @@ fun PdfPageItem(
     }
 
     val density = LocalDensity.current
+    val bgColor = if (isDarkReaderMode) Color(0xFF121212) else Color.White
+    val colorFilter = if (isDarkReaderMode) androidx.compose.ui.graphics.ColorFilter.colorMatrix(DarkReaderColorMatrix) else null
+
     val itemModifier = if (optimalSize != null) {
         with(density) {
             modifier
                 .width(optimalSize.first.toDp())
                 .height(optimalSize.second.toDp())
-                .background(Color.White)
+                .background(bgColor)
         }
     } else {
         modifier
             .fillMaxSize()
-            .background(Color.White)
+            .background(bgColor)
     }
     Box(
         modifier = itemModifier,
         contentAlignment = Alignment.Center
     ) {
         when {
-            // Show loading indicator only if we don't have drawable and no bitmap yet
             isLoading && !hasDrawable && bitmap == null -> {
                 CircularProgressIndicator()
             }
-            // Show drawable for first page if available and PDF not loaded yet
             hasDrawable && bitmap == null -> {
                 val baseModifier = if (optimalSize != null) {
                     with(density) {
@@ -147,10 +159,10 @@ fun PdfPageItem(
                     painter = painterResource(id = drawableId),
                     contentDescription = "Page ${pageIndex + 1}",
                     modifier = imageModifier,
+                    colorFilter = colorFilter,
                     contentScale = if (optimalSize != null) ContentScale.Fit else ContentScale.FillWidth,
                 )
             }
-            // Show rendered PDF bitmap (preferred, replaces drawable when loaded)
             bitmap != null -> {
                 val baseModifier = if (optimalSize != null) {
                     with(density) {
@@ -177,8 +189,29 @@ fun PdfPageItem(
                     bitmap = bitmap!!.asImageBitmap(),
                     contentDescription = "Page ${pageIndex + 1}",
                     modifier = imageModifier,
+                    colorFilter = colorFilter,
                     contentScale = if (optimalSize != null) ContentScale.Fit else ContentScale.FillWidth,
                 )
+            }
+        }
+
+        // In-page search highlight overlays
+        if (searchHighlights.isNotEmpty() && optimalSize != null) {
+            androidx.compose.foundation.Canvas(modifier = Modifier.fillMaxSize()) {
+                val (pageW, pageH) = optimalSize
+                val scaleX = size.width / pageW.toFloat()
+                val scaleY = size.height / pageH.toFloat()
+
+                searchHighlights.forEach { rect ->
+                    drawRect(
+                        color = Color(0x99FF9800), // Bright semi-transparent orange highlight
+                        topLeft = androidx.compose.ui.geometry.Offset(rect.left * scaleX, rect.top * scaleY),
+                        size = androidx.compose.ui.geometry.Size(
+                            width = rect.width() * scaleX,
+                            height = rect.height() * scaleY
+                        )
+                    )
+                }
             }
         }
     }

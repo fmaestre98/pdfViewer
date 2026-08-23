@@ -118,6 +118,24 @@ fun HorizontalPdfView(
         viewModel.setCurrentPage(pagerState.currentPage, optimalSize)
     }
 
+    // Pre-render adjacent pages (currentPage - 1 and currentPage + 1) for zero latency swiping
+    LaunchedEffect(pagerState.currentPage, pageRenderer, loaderState.pageCount, optimalPageSizes.value) {
+        if (pageRenderer == null || loaderState.pageCount <= 1) return@LaunchedEffect
+        val curPage = pagerState.currentPage
+        val optSize = optimalPageSizes.value?.getOrNull(curPage)
+        val w = optSize?.first ?: 0
+        val h = optSize?.second ?: 0
+
+        scope.launch(kotlinx.coroutines.Dispatchers.Default) {
+            if (curPage + 1 < loaderState.pageCount) {
+                pageRenderer.renderPage(curPage + 1, maxWidth = w, maxHeight = h)
+            }
+            if (curPage - 1 >= 0) {
+                pageRenderer.renderPage(curPage - 1, maxWidth = w, maxHeight = h)
+            }
+        }
+    }
+
     // Track actual container size (HorizontalPager dimensions)
     val containerSize = remember { mutableStateOf(Size(screenWidth, screenHeight)) }
 
@@ -312,8 +330,10 @@ fun HorizontalPdfView(
         ) {
             HorizontalPager(
                 state = pagerState,
-                // Disable swipe when zoomed in (text selection no longer blocks swipe)
-                userScrollEnabled = interactiveState.zoomLevel == PdfViewerConstants.ZOOM_LEVEL_1,
+                // Disable swipe when zoomed in OR actively selecting text / dragging handles to protect edge dragging
+                userScrollEnabled = interactiveState.zoomLevel == PdfViewerConstants.ZOOM_LEVEL_1 &&
+                        !interactiveState.isTextSelectionActive &&
+                        !interactiveState.isDraggingHandle,
                 modifier = Modifier
                     .fillMaxSize()
                     .onSizeChanged { size ->

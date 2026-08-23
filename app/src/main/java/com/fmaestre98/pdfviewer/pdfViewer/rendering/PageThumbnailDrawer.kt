@@ -249,17 +249,15 @@ private fun ThumbnailItem(
         }
     }
 
-    // Load thumbnail asynchronously
+    // Load thumbnail asynchronously with LruCache
     LaunchedEffect(pageIndex, pageRenderer) {
         if (pageRenderer != null) {
             isLoading = true
-            // Render at low resolution for thumbnails
-            val bitmap = pageRenderer.renderPage(
+            val bitmap = pageRenderer.renderThumbnail(
                 pageIndex = pageIndex,
-                scaleFactor = 0.45f, // Low resolution for thumbnails
                 maxWidth = thumbnailWidth,
                 maxHeight = thumbnailHeight
-            )?.bitmap
+            )
             thumbnail = bitmap
             isLoading = false
         }

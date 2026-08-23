@@ -43,6 +43,34 @@ class PdfPageRenderer(
         }
     }
 
+    private val thumbnailCache = android.util.LruCache<Int, Bitmap>(40)
+
+    /**
+     * Renderiza o recupera una miniatura desde el caché LRU en memoria para visualización rápida.
+     */
+    suspend fun renderThumbnail(
+        pageIndex: Int,
+        maxWidth: Int = 200,
+        maxHeight: Int = 300
+    ): Bitmap? = withContext(Dispatchers.Default) {
+        if (isDisposed.get()) return@withContext null
+
+        // Comprobar LruCache de miniaturas primero
+        thumbnailCache.get(pageIndex)?.let { return@withContext it }
+
+        val renderedPage = renderPage(
+            pageIndex = pageIndex,
+            scaleFactor = 0.35f,
+            maxWidth = maxWidth,
+            maxHeight = maxHeight
+        )
+        val bmp = renderedPage?.bitmap
+        if (bmp != null) {
+            thumbnailCache.put(pageIndex, bmp)
+        }
+        bmp
+    }
+
     /**
      * Renderiza página completa (solo bitmap, sin texto).
      * La extracción de texto se hace por separado para mejor organización.
