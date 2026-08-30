@@ -196,7 +196,7 @@ fun HorizontalPdfView(
             }
 
 
-            override fun onSelectionHandleDragged(isStart: Boolean, x: Float, y: Float, viewWidth: Int, viewHeight: Int) {
+            override fun onSelectionHandleDragged(isStart: Boolean, x: Float, y: Float, viewWidth: Int, viewHeight: Int, sourcePage: Int) {
                 val pageModel =  interactiveState.getPageModel(navigationState.currentPageIndex) ?: return
                 interactiveState.isDraggingHandle = true // Ocultar menú
 

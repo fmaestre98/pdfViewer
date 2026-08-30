@@ -24,12 +24,13 @@ interface PdfInteractionListener {
     /**
      * Called when a selection handle is dragged.
      * @param isStart True if dragging the start handle, false for end handle
-     * @param x Absolute X coordinate in screen space
-     * @param y Absolute Y coordinate in screen space
+     * @param x X coordinate local to the source page overlay
+     * @param y Y coordinate local to the source page overlay (may exceed page height when crossing to next page)
      * @param viewWidth Width of the view/overlay
      * @param viewHeight Height of the view/overlay
+     * @param sourcePage Page index that the x/y coordinates are relative to (-1 = infer from selection state)
      */
-    fun onSelectionHandleDragged(isStart: Boolean, x: Float, y: Float, viewWidth: Int, viewHeight: Int)
+    fun onSelectionHandleDragged(isStart: Boolean, x: Float, y: Float, viewWidth: Int, viewHeight: Int, sourcePage: Int = -1)
 
     /**
      * Called when a transform gesture (pinch zoom/pan) is detected.

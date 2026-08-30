@@ -39,9 +39,10 @@ class GestureHandler(
 
     /**
      * Updates selection handle position.
+     * @param sourcePage The page index whose overlay is generating this event (the y coordinate origin).
      */
-    fun updateSelectionHandle(isStart: Boolean, x: Float, y: Float, viewWidth: Int, viewHeight: Int) {
-        listener.onSelectionHandleDragged(isStart, x, y, viewWidth, viewHeight)
+    fun updateSelectionHandle(isStart: Boolean, x: Float, y: Float, viewWidth: Int, viewHeight: Int, sourcePage: Int = -1) {
+        listener.onSelectionHandleDragged(isStart, x, y, viewWidth, viewHeight, sourcePage)
     }
     
     /**

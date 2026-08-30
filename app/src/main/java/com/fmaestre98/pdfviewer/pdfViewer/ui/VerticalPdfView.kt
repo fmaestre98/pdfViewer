@@ -182,10 +182,14 @@ fun VerticalPdfView(
     // Create gesture orchestrator
     val gestureOrchestrator = remember { GestureOrchestrator() }
 
+    // lastDragScreenY: y position of the dragged handle in viewport/screen space (0 = top of visible area)
     var lastDragScreenY by remember { mutableFloatStateOf(-1f) }
     var lastDragIsStart by remember { mutableStateOf(false) }
+    // lastDragX/Y: local overlay coordinates of the handle being dragged (relative to the source page)
     var lastDragX by remember { mutableFloatStateOf(0f) }
     var lastDragY by remember { mutableFloatStateOf(0f) }
+    // lastDragSourcePage: the pageIndex whose overlay captured the current drag gesture
+    var lastDragSourcePage by remember { mutableStateOf(-1) }
 
     // Create interaction listener that implements business logic for vertical view
     val interactionListener = remember(
@@ -257,48 +261,61 @@ fun VerticalPdfView(
                 }
             }
 
-            override fun onSelectionHandleDragged(isStart: Boolean, x: Float, y: Float, viewWidth: Int, viewHeight: Int) {
-                val sourcePage = if (isStart) interactiveState.selectionStartPageIndex else interactiveState.selectionEndPageIndex
-                if (sourcePage < 0) return
-
+            override fun onSelectionHandleDragged(isStart: Boolean, x: Float, y: Float, viewWidth: Int, viewHeight: Int, sourcePage: Int) {
                 interactiveState.isDraggingHandle = true
                 val visibleItems = listState.layoutInfo.visibleItemsInfo
-                val sourceItem = visibleItems.find { it.index == sourcePage }
+                if (visibleItems.isEmpty()) return
 
-                // Calculate unzoomed Y position in LazyColumn content
+                // x, y are overlay-local coordinates (relative to the source page overlay).
+                // Use the explicit sourcePage from the overlay (= the pageIndex of the overlay that
+                // captured the touch) rather than the current selection state — those may already
+                // point to the NEW page after a cross-page transition while the drag gesture is
+                // still physically anchored to the old page's overlay.
+                val resolvedSourcePage = if (sourcePage >= 0) sourcePage
+                    else if (isStart) interactiveState.selectionStartPageIndex
+                    else interactiveState.selectionEndPageIndex
+                val sourceItem = if (resolvedSourcePage >= 0) visibleItems.find { it.index == resolvedSourcePage } else null
+
+                // Absolute Y in LazyColumn content space
                 val layoutY = if (sourceItem != null) {
                     sourceItem.offset + y
                 } else {
-                    val firstVis = visibleItems.firstOrNull() ?: return
+                    // Fallback: use the first visible item as reference
+                    val firstVis = visibleItems.first()
                     firstVis.offset + y
                 }
 
-                val firstVisOffset = visibleItems.firstOrNull()?.offset ?: 0
+                // Convert layoutY to screen/viewport space for edge-autoscroll threshold
+                val firstVisOffset = visibleItems.first().offset
                 lastDragIsStart = isStart
                 lastDragX = x
                 lastDragY = y
-                lastDragScreenY = (layoutY - firstVisOffset)
+                lastDragSourcePage = resolvedSourcePage
+                // Screen Y = layoutY relative to the first visible item's top in viewport
+                lastDragScreenY = layoutY - firstVisOffset
 
-                // Find target item in visible items matching layoutY
+                // Find which page item the drag is currently over
                 var targetItem = visibleItems.find { item ->
-                    layoutY >= item.offset && layoutY <= item.offset + item.size
+                    layoutY >= item.offset && layoutY < item.offset + item.size
                 }
 
-                if (targetItem == null && visibleItems.isNotEmpty()) {
-                    if (layoutY < visibleItems.first().offset) {
-                        targetItem = visibleItems.first()
-                    } else if (layoutY > visibleItems.last().offset + visibleItems.last().size) {
-                        targetItem = visibleItems.last()
+                if (targetItem == null) {
+                    // Clamp to nearest visible item
+                    targetItem = if (layoutY < visibleItems.first().offset) {
+                        visibleItems.first()
+                    } else {
+                        visibleItems.last()
                     }
                 }
 
-                if (targetItem == null) return
                 val targetPageIndex = targetItem.index
                 val targetOptimalSize = optimalPageSizes.value?.getOrNull(targetPageIndex) ?: return
                 val targetPageWidth = targetOptimalSize.first.toFloat()
                 val targetPageHeight = targetOptimalSize.second.toFloat()
 
+                // targetLocalY is y relative to the TARGET page's top, clamped to page bounds
                 val targetLocalY = (layoutY - targetItem.offset).coerceIn(0f, targetPageHeight)
+                // targetLocalX: use the overlay-local x (same scale for all pages)
                 val targetLocalX = x.coerceIn(0f, targetPageWidth)
 
                 val targetOptimizedModel = interactiveState.getOptimizedPageModel(targetPageIndex)
@@ -381,33 +398,75 @@ fun VerticalPdfView(
         }
     }
 
-    // Automatic Edge Autoscroll when dragging handles near top or bottom screen boundaries
-    LaunchedEffect(interactiveState.isDraggingHandle, lastDragScreenY) {
+    // Continuous edge-autoscroll while a handle is being dragged near the top/bottom boundary.
+    // Uses a coroutine loop (16 ms tick ≈ 60 fps) so scrolling persists as long as the
+    // handle is held at the edge — a one-shot LaunchedEffect would stop after a single frame.
+    LaunchedEffect(interactiveState.isDraggingHandle) {
         if (!interactiveState.isDraggingHandle) return@LaunchedEffect
         val edgeThresholdPx = with(density) { 80.dp.toPx() }
         val maxScrollStepPx = with(density) { 12.dp.toPx() }
 
-        val screenH = containerSize.value.height
-        if (screenH > 0 && lastDragScreenY >= 0) {
-            var scrollDelta = 0f
-            if (lastDragScreenY < edgeThresholdPx) {
-                val factor = (1f - (lastDragScreenY / edgeThresholdPx)).coerceIn(0f, 1f)
-                scrollDelta = -maxScrollStepPx * factor
-            } else if (lastDragScreenY > screenH - edgeThresholdPx) {
-                val factor = ((lastDragScreenY - (screenH - edgeThresholdPx)) / edgeThresholdPx).coerceIn(0f, 1f)
-                scrollDelta = maxScrollStepPx * factor
-            }
+        while (interactiveState.isDraggingHandle) {
+            val screenH = containerSize.value.height
+            val currentScreenY = lastDragScreenY
+            if (screenH > 0 && currentScreenY >= 0) {
+                var scrollDelta = 0f
+                if (currentScreenY < edgeThresholdPx) {
+                    val factor = (1f - (currentScreenY / edgeThresholdPx)).coerceIn(0f, 1f)
+                    scrollDelta = -maxScrollStepPx * factor
+                } else if (currentScreenY > screenH - edgeThresholdPx) {
+                    val factor = ((currentScreenY - (screenH - edgeThresholdPx)) / edgeThresholdPx).coerceIn(0f, 1f)
+                    scrollDelta = maxScrollStepPx * factor
+                }
 
-            if (scrollDelta != 0f) {
-                listState.scrollBy(scrollDelta)
-                interactionListener.onSelectionHandleDragged(
-                    isStart = lastDragIsStart,
-                    x = lastDragX,
-                    y = lastDragY,
-                    viewWidth = 0,
-                    viewHeight = 0
-                )
+                if (scrollDelta != 0f) {
+                    listState.scrollBy(scrollDelta)
+
+                    // Re-evaluate which character the handle is now over using the SCREEN
+                    // position of the finger (which hasn't moved). We use lastDragScreenY
+                    // (viewport-space) rather than lastDragY (page-local) because after
+                    // scrolling the item offsets have shifted, so page-local coords no longer
+                    // map to the finger's actual screen position.
+                    val visibleItems = listState.layoutInfo.visibleItemsInfo
+                    if (visibleItems.isNotEmpty()) {
+                        val firstVisOffset = visibleItems.first().offset
+                        // Finger's content-space Y = first-visible-item offset + viewport-Y
+                        val layoutY = firstVisOffset + currentScreenY
+
+                        var targetItem = visibleItems.find { item ->
+                            layoutY >= item.offset && layoutY < item.offset + item.size
+                        }
+                        if (targetItem == null) {
+                            targetItem = if (layoutY < visibleItems.first().offset) visibleItems.first()
+                                         else visibleItems.last()
+                        }
+
+                        val targetPageIndex = targetItem.index
+                        val targetOptimalSize = optimalPageSizes.value?.getOrNull(targetPageIndex)
+                        if (targetOptimalSize != null) {
+                            val targetPageHeight = targetOptimalSize.second.toFloat()
+                            val targetPageWidth  = targetOptimalSize.first.toFloat()
+                            val targetLocalY = (layoutY - targetItem.offset).coerceIn(0f, targetPageHeight)
+                            val targetLocalX = lastDragX.coerceIn(0f, targetPageWidth)
+
+                            val optimizedModel = interactiveState.getOptimizedPageModel(targetPageIndex)
+                            val pageModel      = interactiveState.getPageModel(targetPageIndex)
+
+                            val newChar = if (optimizedModel != null) {
+                                PdfCoordinateHelpers.findCharInModel(optimizedModel, targetLocalX, targetLocalY)
+                            } else if (pageModel != null) {
+                                PdfCoordinateHelpers.findCharInModel(pageModel, targetLocalX, targetLocalY)
+                            } else null
+
+                            if (newChar != null) {
+                                if (lastDragIsStart) interactiveState.updateSelectionStart(newChar, targetPageIndex)
+                                else interactiveState.updateSelectionEnd(newChar, targetPageIndex)
+                            }
+                        }
+                    }
+                }
             }
+            delay(16L) // ~60 fps tick
         }
     }
 

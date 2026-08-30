@@ -168,7 +168,10 @@ fun TextSelectionOverlay(
             val startRect = pdfRectToScreen(startCharCurrent.rect, w, h)
             snappedStart = startRect.bottomLeft
             if (draggingHandle != HandleType.START) dragPositionStart = snappedStart
-        } else {
+        } else if (draggingHandle != HandleType.START) {
+            // Only hide the handle if we're NOT actively dragging it from this page.
+            // If we are dragging, keep snappedStart at its last position so the
+            // SelectionHandleTeardrop stays in composition and the gesture isn't cancelled.
             snappedStart = Offset.Zero
         }
 
@@ -176,7 +179,8 @@ fun TextSelectionOverlay(
             val endRect = pdfRectToScreen(endCharCurrent.rect, w, h)
             snappedEnd = endRect.bottomRight
             if (draggingHandle != HandleType.END) dragPositionEnd = snappedEnd
-        } else {
+        } else if (draggingHandle != HandleType.END) {
+            // Same: keep snappedEnd alive during an active drag to prevent gesture cancellation.
             snappedEnd = Offset.Zero
         }
     }
@@ -205,8 +209,9 @@ fun TextSelectionOverlay(
             }
         }
 
-        // ── Selection Handles ───────────────────────────────────────────────
-        if (showStartHandle && snappedStart != Offset.Zero) {
+        // Render start handle: show if this page owns it, OR if we're actively dragging it
+        // from this page (keep alive to prevent gesture cancellation on cross-page drag).
+        if ((showStartHandle || draggingHandle == HandleType.START) && snappedStart != Offset.Zero) {
             SelectionHandleTeardrop(
                 isStart = true,
                 position = snappedStart,
@@ -225,7 +230,8 @@ fun TextSelectionOverlay(
                         x          = dragPositionStart.x,
                         y          = dragPositionStart.y,
                         viewWidth  = overlaySize.width,
-                        viewHeight = overlaySize.height
+                        viewHeight = overlaySize.height,
+                        sourcePage = pageIndex
                     )
                 },
                 onDragEnd = {
@@ -236,7 +242,8 @@ fun TextSelectionOverlay(
             )
         }
 
-        if (showEndHandle && snappedEnd != Offset.Zero) {
+        // Render end handle: same rule — keep alive during active drag.
+        if ((showEndHandle || draggingHandle == HandleType.END) && snappedEnd != Offset.Zero) {
             SelectionHandleTeardrop(
                 isStart = false,
                 position = snappedEnd,
@@ -255,7 +262,8 @@ fun TextSelectionOverlay(
                         x          = dragPositionEnd.x,
                         y          = dragPositionEnd.y,
                         viewWidth  = overlaySize.width,
-                        viewHeight = overlaySize.height
+                        viewHeight = overlaySize.height,
+                        sourcePage = pageIndex
                     )
                 },
                 onDragEnd = {
