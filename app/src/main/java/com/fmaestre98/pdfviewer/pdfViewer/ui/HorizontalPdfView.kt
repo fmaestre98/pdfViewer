@@ -192,6 +192,9 @@ fun HorizontalPdfView(
                     // Replace previous selection with new one (per user preference)
                     interactiveState.activateTextSelection(word, navigationState.currentPageIndex)
                     onWordSelected?.invoke(word)
+                } else if (interactiveState.isTextSelectionActive) {
+                    interactiveState.deactivateTextSelection()
+                    onSelectionCleared?.invoke()
                 }
             }
 

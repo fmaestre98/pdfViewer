@@ -258,6 +258,9 @@ fun VerticalPdfView(
                 if (word != null) {
                     interactiveState.activateTextSelection(word, targetPageIndex)
                     onWordSelected?.invoke(word)
+                } else if (interactiveState.isTextSelectionActive) {
+                    interactiveState.deactivateTextSelection()
+                    onSelectionCleared?.invoke()
                 }
             }
 

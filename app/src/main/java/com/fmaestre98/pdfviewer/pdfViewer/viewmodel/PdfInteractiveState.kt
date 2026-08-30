@@ -42,6 +42,8 @@ class PdfInteractiveState {
 
     // Para saber si ocultar el menú flotante mientras se arrastra
     var isDraggingHandle by mutableStateOf(false)
+    // Indica si el handle que se está arrastrando actualmente es el de inicio (true) o fin (false)
+    var draggingHandleIsStart by mutableStateOf<Boolean?>(null)
 
     private val pageModels = mutableMapOf<Int, PageModel>()
     private val optimizedPageModels = mutableMapOf<Int, com.fmaestre98.pdfviewer.pdfViewer.model.OptimizedPageModel>()
@@ -229,6 +231,7 @@ class PdfInteractiveState {
         selectionStartPageIndex = pageIndex
         selectionEndPageIndex = pageIndex
         isDraggingHandle = false
+        draggingHandleIsStart = null
     }
 
     fun deactivateTextSelection() {
@@ -237,6 +240,7 @@ class PdfInteractiveState {
         selectionStartPageIndex = -1
         selectionEndPageIndex = -1
         isDraggingHandle = false
+        draggingHandleIsStart = null
     }
 
     fun isPositionBeforeOrEqual(pageA: Int, charA: PdfChar, pageB: Int, charB: PdfChar): Boolean {
