@@ -1,6 +1,8 @@
 package com.fmaestre98.pdfviewer.sdk.ui.reader
 
-sealed interface PdfReaderAction {
+import com.fmaestre98.pdfviewer.sdk.storage.NormalizedRect
+
+internal sealed interface PdfReaderAction {
     data class OnPageChanged(val pageIndex: Int) : PdfReaderAction
     data object OnBackClick : PdfReaderAction
     data object ToggleFab : PdfReaderAction
@@ -15,7 +17,7 @@ sealed interface PdfReaderAction {
         val color: String,
         val page: Int,
         val snippet: String,
-        val normalizedRects: List<com.fmaestre98.pdfviewer.sdk.data.repository.NormalizedRect>
+        val normalizedRects: List<NormalizedRect>
     ) : PdfReaderAction
     data object ToggleSearch : PdfReaderAction
     data object CloseSearch : PdfReaderAction

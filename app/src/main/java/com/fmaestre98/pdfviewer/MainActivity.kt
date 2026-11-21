@@ -20,10 +20,13 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.fmaestre98.pdfviewer.repository.PDFRepository
+import com.fmaestre98.pdfviewer.sdk.model.PdfSource
+import com.fmaestre98.pdfviewer.sdk.model.PdfViewerConfig
+import com.fmaestre98.pdfviewer.sdk.storage.PdfViewerStorage
+import com.fmaestre98.pdfviewer.sdk.ui.PdfReaderView
 import com.fmaestre98.pdfviewer.ui.navigation.AppNavigation
 import com.fmaestre98.pdfviewer.ui.screens.annotations.AnnotationsRoot
 import com.fmaestre98.pdfviewer.ui.screens.home.HomeRoot
-import com.fmaestre98.pdfviewer.ui.screens.reader.PdfReaderRoot
 import com.fmaestre98.pdfviewer.ui.theme.PdfViewerTheme
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -36,6 +39,9 @@ class MainActivity : ComponentActivity() {
 
     @Inject
     lateinit var pdfRepository: PDFRepository
+
+    @Inject
+    lateinit var pdfViewerStorage: PdfViewerStorage
 
     private val intentFlow = MutableStateFlow<Intent?>(null)
 
@@ -96,12 +102,14 @@ class MainActivity : ComponentActivity() {
                             )
                         ) { backStackEntry ->
                             val encodedUri = backStackEntry.arguments?.getString("encodedUri") ?: ""
-                            val initialPage = backStackEntry.arguments?.getString("initialPage")?.toIntOrNull() ?: 0
+                            val initialPage = backStackEntry.arguments?.getString("initialPage")?.toIntOrNull()
                             val decodedUri = Uri.decode(encodedUri)
 
-                            com.fmaestre98.pdfviewer.sdk.ui.PdfReaderView(
-                                source = com.fmaestre98.pdfviewer.sdk.model.PdfSource.FromUri(Uri.parse(decodedUri)),
-                                config = com.fmaestre98.pdfviewer.sdk.model.PdfViewerConfig(initialPage = initialPage),
+                            PdfReaderView(
+                                source = PdfSource.FromUri(Uri.parse(decodedUri)),
+                                documentId = decodedUri,
+                                config = PdfViewerConfig(initialPage = initialPage),
+                                storage = pdfViewerStorage,
                                 onClose = { navController.popBackStack() }
                             )
                         }

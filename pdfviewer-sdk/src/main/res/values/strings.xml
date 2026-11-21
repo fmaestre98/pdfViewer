@@ -5,6 +5,30 @@
     <string name="reader_page_indicator">%1$d / %2$d</string>
     <string name="reader_orientation_vertical">Switch to vertical scrolling</string>
     <string name="reader_orientation_horizontal">Switch to horizontal pagination</string>
+    <string name="reader_search">Search text</string>
+    <string name="reader_add_bookmark">Add bookmark</string>
+    <string name="reader_remove_bookmark">Remove bookmark</string>
+    <string name="reader_view_footnote">View footnote</string>
+    <string name="reader_index">Index</string>
+    <string name="reader_page_note">Page note</string>
+    <string name="reader_open_menu">Open menu</string>
+    <string name="reader_close_menu">Close menu</string>
+    <string name="reader_loading_error">Error loading PDF</string>
+
+    <!-- Notes -->
+    <string name="note_edit_title">Edit Note</string>
+    <string name="note_add_title">Add Note</string>
+    <string name="note_hint">Write your note here</string>
+    <string name="note_delete">Delete</string>
+    <string name="note_cancel">Cancel</string>
+    <string name="note_save">Save</string>
+
+    <!-- Search -->
+    <string name="search_placeholder">Search in document…</string>
+    <string name="search_content_description">Search</string>
+    <string name="search_clear">Clear</string>
+    <string name="search_close">Close search</string>
+    <string name="search_no_results">No results found</string>
 
     <!-- Annotations screen -->
     <string name="annotations_title">Annotations &amp; Bookmarks</string>

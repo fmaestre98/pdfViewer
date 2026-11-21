@@ -68,9 +68,6 @@ dependencies {
     // Gson
     implementation(libs.gson)
 
-    // PDFBox
-    implementation(libs.pdfbox.android)
-
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

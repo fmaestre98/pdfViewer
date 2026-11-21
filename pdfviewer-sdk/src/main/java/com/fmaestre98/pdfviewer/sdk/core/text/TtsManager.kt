@@ -8,7 +8,7 @@ import com.fmaestre98.pdfviewer.sdk.core.model.PageModel
 import com.fmaestre98.pdfviewer.sdk.core.model.PdfWord
 import java.util.Locale
 
-class TtsManager(context: Context) {
+internal class TtsManager(context: Context) {
 
     private var tts: TextToSpeech? = null
     private var isInitialized = false

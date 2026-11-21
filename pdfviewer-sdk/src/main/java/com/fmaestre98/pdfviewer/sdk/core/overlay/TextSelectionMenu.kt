@@ -33,7 +33,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 
 @Composable
-fun TextSelectionMenu(
+internal fun TextSelectionMenu(
     modifier: Modifier = Modifier,
     onCopy: () -> Unit,
     onHighlightRequested: (String) -> Unit,

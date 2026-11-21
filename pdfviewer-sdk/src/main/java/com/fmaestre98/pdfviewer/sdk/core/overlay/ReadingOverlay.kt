@@ -16,7 +16,7 @@ import androidx.compose.ui.unit.dp
 import com.fmaestre98.pdfviewer.sdk.core.model.PdfWord
 
 @Composable
-fun ReadingOverlay(
+internal fun ReadingOverlay(
     currentReadingWord: PdfWord?,
     pageWidth: Int,
     pageHeight: Int,

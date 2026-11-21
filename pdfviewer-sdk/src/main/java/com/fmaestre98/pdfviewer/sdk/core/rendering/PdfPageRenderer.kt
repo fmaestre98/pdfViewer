@@ -9,7 +9,7 @@ import com.fmaestre98.pdfviewer.sdk.core.model.PageModel
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
 
-class PdfPageRenderer(
+internal class PdfPageRenderer(
     private val rendererManager: PdfRendererManager,
     private val context: Context,
     private val pdfFile: java.io.File,
@@ -277,7 +277,7 @@ class PdfPageRenderer(
  * Data class representing a rendered page with its metadata.
  */
 @Immutable
-data class RenderedPage(
+internal data class RenderedPage(
     val pageIndex: Int,
     val bitmap: Bitmap,
     val width: Int,

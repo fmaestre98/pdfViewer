@@ -10,7 +10,7 @@ import com.fmaestre98.pdfviewer.sdk.core.model.PdfWord
  * Helper functions for PDF coordinate conversion and word finding.
  * Extracted from GestureHandler for reuse.
  */
-object PdfCoordinateHelpers {
+internal object PdfCoordinateHelpers {
     /**
      * Converts screen coordinates to PDF page coordinates.
      */
@@ -249,15 +249,7 @@ object PdfCoordinateHelpers {
                 }
             }
         }
-        if (closestChar != null) return closestChar
-
-        val lineChars = nearestLine.words.flatMap { it.characters }
-        if (lineChars.isEmpty()) return null
-        return when {
-            x > nearestLine.rect.right -> lineChars.last()
-            x < nearestLine.rect.left -> lineChars.first()
-            else -> lineChars.minByOrNull { kotlin.math.abs(it.rect.centerX() - x) }
-        }
+        return closestChar
     }
     
     /**
@@ -271,7 +263,6 @@ object PdfCoordinateHelpers {
         // Use tolerance of 30f to match the original implementation's searchRadius
         return optimizedModel.findCharNear(x, y, 30f)
     }
-
 
     private fun findCharInLine(line: PdfLine, x: Float, y: Float): PdfChar? {
         var closestChar: PdfChar? = null

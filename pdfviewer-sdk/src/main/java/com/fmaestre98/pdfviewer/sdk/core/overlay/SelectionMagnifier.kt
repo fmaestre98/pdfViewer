@@ -56,7 +56,7 @@ private val SHADOW_COLOR  = Color(0x33000000)
  * @param pageHeight      Logical page height used in [pdfRectToScreen] (optimalSize.second).
  */
 @Composable
-fun SelectionMagnifier(
+internal fun SelectionMagnifier(
     isVisible: Boolean,
     handlePosition: Offset,
     overlaySize: IntSize,

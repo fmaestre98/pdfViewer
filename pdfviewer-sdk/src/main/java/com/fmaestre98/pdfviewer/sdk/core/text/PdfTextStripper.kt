@@ -9,7 +9,7 @@ import com.fmaestre98.pdfviewer.sdk.core.model.PdfWord
 import com.fmaestre98.pdfviewer.sdk.core.model.Size
 
 @Suppress("UNCHECKED_CAST")
-class PdfTextStripper(
+internal class PdfTextStripper(
     private var page : Int,
     private var lineIdStart : Int =0,
     private var wordIdStart : Int =0,

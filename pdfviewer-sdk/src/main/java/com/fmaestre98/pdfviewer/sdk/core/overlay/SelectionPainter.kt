@@ -18,7 +18,7 @@ import kotlin.math.abs
  * Helper class for efficient selection rendering.
  * Reduces draw calls by grouping adjacent characters into single rectangles.
  */
-class SelectionPainter {
+internal class SelectionPainter {
     private val selectionPaint = Paint().apply {
         color = Color(0x662196F3) // Light Blue with transparency
         style = PaintingStyle.Fill

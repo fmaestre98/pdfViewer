@@ -1,18 +1,25 @@
 package com.fmaestre98.pdfviewer.sdk.model
 
-enum class PdfViewerOrientation {
-    Vertical,
-    Horizontal
-}
+import androidx.compose.ui.graphics.Color
+import com.fmaestre98.pdfviewer.sdk.core.model.PdfViewerOrientation
 
 /**
- * Opciones de configuración para el comportamiento del visor de PDF.
+ * Selection / highlight colors used by the SDK overlays.
+ */
+data class PdfViewerColors(
+    val selectionHighlight: Color = Color(0x40007AFF),
+    val selectionHandle: Color = Color(0xFF007AFF)
+)
+
+/**
+ * Configuration options for PDF viewer behaviour.
  */
 data class PdfViewerConfig(
     val enableAnnotations: Boolean = true,
     val enableBookmarks: Boolean = true,
     val enableSearch: Boolean = true,
     val enableThumbnailDrawer: Boolean = true,
-    val initialOrientation: PdfViewerOrientation = PdfViewerOrientation.Vertical,
-    val initialPage: Int = 0
+    val initialOrientation: PdfViewerOrientation = PdfViewerOrientation.Horizontal,
+    val initialPage: Int? = null,
+    val colors: PdfViewerColors = PdfViewerColors()
 )

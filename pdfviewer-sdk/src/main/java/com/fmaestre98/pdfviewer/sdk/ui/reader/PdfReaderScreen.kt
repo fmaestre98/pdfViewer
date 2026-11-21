@@ -1,79 +1,98 @@
 package com.fmaestre98.pdfviewer.sdk.ui.reader
 
-import android.net.Uri
-import androidx.compose.animation.ExperimentalSharedTransitionApi
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.stringResource
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.fmaestre98.pdfviewer.sdk.core.model.PdfViewerOrientation
-import com.fmaestre98.pdfviewer.sdk.core.ui.ComposePdfViewer
-import com.fmaestre98.pdfviewer.sdk.ui.util.ObserveAsEvents
-import kotlinx.coroutines.launch
-import java.io.File
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.FloatingActionButtonDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.text
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
 import com.fmaestre98.pdfviewer.sdk.R
+import com.fmaestre98.pdfviewer.sdk.core.model.HighlightData
+import com.fmaestre98.pdfviewer.sdk.core.model.PdfViewerOrientation
 import com.fmaestre98.pdfviewer.sdk.core.rendering.PageThumbnailDrawer
 import com.fmaestre98.pdfviewer.sdk.core.rendering.PdfPageRenderer
+import com.fmaestre98.pdfviewer.sdk.core.ui.ComposePdfViewer
 import com.fmaestre98.pdfviewer.sdk.core.viewmodel.PdfViewerViewModel
-import com.fmaestre98.pdfviewer.sdk.data.repository.NormalizedRect
+import com.fmaestre98.pdfviewer.sdk.model.PdfViewerColors
+import com.fmaestre98.pdfviewer.sdk.storage.NormalizedRect
+import com.fmaestre98.pdfviewer.sdk.ui.LocalPdfViewerColors
 import com.fmaestre98.pdfviewer.sdk.ui.reader.components.PageNoteBottomSheet
 import com.fmaestre98.pdfviewer.sdk.ui.reader.components.PdfSearchOverlay
-import androidx.compose.foundation.layout.Row
-import androidx.compose.material.icons.filled.Search
+import java.io.File
 
-@Composable
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalSharedTransitionApi::class)
 @Composable
-fun PdfReaderScreen(
+internal fun PdfReaderScreen(
     state: PdfReaderState,
     snackbarHostState: SnackbarHostState,
     pdfViewerViewModel: PdfViewerViewModel,
     onAction: (PdfReaderAction) -> Unit,
-    onClose: () -> Unit = {}
+    selectionHandleColor: Color = PdfViewerColors().selectionHandle,
+    selectionHighlightColor: Color = PdfViewerColors().selectionHighlight
+) {
+    CompositionLocalProvider(
+        LocalPdfViewerColors provides PdfViewerColors(
+            selectionHighlight = selectionHighlightColor,
+            selectionHandle = selectionHandleColor
+        )
+    ) {
+        PdfReaderScreenContent(
+            state = state,
+            snackbarHostState = snackbarHostState,
+            pdfViewerViewModel = pdfViewerViewModel,
+            onAction = onAction
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalSharedTransitionApi::class)
+@Composable
+private fun PdfReaderScreenContent(
+    state: PdfReaderState,
+    snackbarHostState: SnackbarHostState,
+    pdfViewerViewModel: PdfViewerViewModel,
+    onAction: (PdfReaderAction) -> Unit
 ) {
     val interactiveState = pdfViewerViewModel.interactiveState
 
@@ -84,7 +103,7 @@ fun PdfReaderScreen(
     LaunchedEffect(state.highlights) {
         val mappedHighlights = state.highlights.mapValues { (_, list) ->
             list.map { repoHighlight ->
-                com.fmaestre98.pdfviewer.sdk.core.model.HighlightData(
+                HighlightData(
                     groupId = repoHighlight.groupId,
                     color = repoHighlight.color,
                     startX = repoHighlight.startX,
@@ -97,6 +116,7 @@ fun PdfReaderScreen(
         }
         interactiveState.setHighlights(mappedHighlights)
     }
+
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { paddingValues ->
@@ -113,8 +133,6 @@ fun PdfReaderScreen(
                     modifier = Modifier.align(Alignment.Center)
                 )
             } else {
-                val context = LocalContext.current
-
                 val file = remember(state.filePath) {
                     state.filePath?.let { File(it) }?.takeIf { it.exists() }
                 }
@@ -234,7 +252,6 @@ fun PdfReaderScreen(
                         )
                     }
 
-                    // Bookmark and search buttons at the top right
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
@@ -242,36 +259,45 @@ fun PdfReaderScreen(
                         contentAlignment = Alignment.TopEnd
                     ) {
                         Row {
-                            IconButton(
-                                onClick = { onAction(PdfReaderAction.ToggleSearch) },
-                                modifier = Modifier.size(48.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Search,
-                                    contentDescription = "Search text",
-                                    tint = Color.Gray
-                                )
+                            if (state.enableSearch) {
+                                IconButton(
+                                    onClick = { onAction(PdfReaderAction.ToggleSearch) },
+                                    modifier = Modifier.size(48.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Search,
+                                        contentDescription = stringResource(R.string.reader_search),
+                                        tint = Color.Gray
+                                    )
+                                }
                             }
-                            IconButton(
-                                onClick = { onAction(PdfReaderAction.ToggleBookmark) },
-                                modifier = Modifier.size(48.dp)
-                            ) {
-                                Icon(
-                                    painter = painterResource(
-                                        id = if (state.isCurrentPageBookmarked) {
-                                            R.drawable.ic_bookmarked
-                                        } else {
-                                            R.drawable.ic_not_bookmarked
-                                        }
-                                    ),
-                                    contentDescription = if (state.isCurrentPageBookmarked) "Remove bookmark" else "Add bookmark",
-                                    tint = Color(0xFFFFA000)
-                                )
+                            if (state.enableBookmarks) {
+                                IconButton(
+                                    onClick = { onAction(PdfReaderAction.ToggleBookmark) },
+                                    modifier = Modifier.size(48.dp)
+                                ) {
+                                    Icon(
+                                        painter = painterResource(
+                                            id = if (state.isCurrentPageBookmarked) {
+                                                R.drawable.ic_bookmarked
+                                            } else {
+                                                R.drawable.ic_not_bookmarked
+                                            }
+                                        ),
+                                        contentDescription = stringResource(
+                                            if (state.isCurrentPageBookmarked) {
+                                                R.string.reader_remove_bookmark
+                                            } else {
+                                                R.string.reader_add_bookmark
+                                            }
+                                        ),
+                                        tint = Color(0xFFFFA000)
+                                    )
+                                }
                             }
                         }
                     }
 
-                    // Persistent Page Note Icon (Top Left)
                     if (state.currentPageNote != null) {
                         Box(
                             modifier = Modifier
@@ -285,7 +311,7 @@ fun PdfReaderScreen(
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.Edit,
-                                    contentDescription = "View footnote",
+                                    contentDescription = stringResource(R.string.reader_view_footnote),
                                     tint = Color(0xFFFFA000),
                                     modifier = Modifier.size(32.dp)
                                 )
@@ -293,7 +319,6 @@ fun PdfReaderScreen(
                         }
                     }
 
-                    // Floating Action Toolbar - Visible if file exists
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
@@ -313,17 +338,18 @@ fun PdfReaderScreen(
                                     horizontalAlignment = Alignment.End,
                                     modifier = Modifier.padding(bottom = 8.dp)
                                 ) {
-                                    FloatingActionButton(
-                                        onClick = { onAction(PdfReaderAction.ToggleThumbnailDrawer) },
-                                        modifier = Modifier.size(56.dp)
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.AutoMirrored.Filled.List,
-                                            contentDescription = "Index"
-                                        )
+                                    if (state.enableThumbnailDrawer) {
+                                        FloatingActionButton(
+                                            onClick = { onAction(PdfReaderAction.ToggleThumbnailDrawer) },
+                                            modifier = Modifier.size(56.dp)
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.AutoMirrored.Filled.List,
+                                                contentDescription = stringResource(R.string.reader_index)
+                                            )
+                                        }
+                                        Spacer(modifier = Modifier.height(8.dp))
                                     }
-
-                                    Spacer(modifier = Modifier.height(8.dp))
 
                                     FloatingActionButton(
                                         onClick = { onAction(PdfReaderAction.ToggleOrientation) },
@@ -347,23 +373,30 @@ fun PdfReaderScreen(
                                         )
                                     }
 
-                                    Spacer(modifier = Modifier.height(8.dp))
-
-                                    FloatingActionButton(
-                                        onClick = {
-                                            showNoteDialog = true
-                                            onAction(PdfReaderAction.CloseFab)
-                                        },
-                                        modifier = Modifier.size(56.dp),
-                                        containerColor = if (state.currentPageNote != null) Color(
-                                            0xFFFFF9C4
-                                        ) else MaterialTheme.colorScheme.primaryContainer
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Default.Edit,
-                                            contentDescription = "Page note",
-                                            tint = if (state.currentPageNote != null) Color.Black else MaterialTheme.colorScheme.onPrimaryContainer
-                                        )
+                                    if (state.enableAnnotations) {
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        FloatingActionButton(
+                                            onClick = {
+                                                showNoteDialog = true
+                                                onAction(PdfReaderAction.CloseFab)
+                                            },
+                                            modifier = Modifier.size(56.dp),
+                                            containerColor = if (state.currentPageNote != null) {
+                                                Color(0xFFFFF9C4)
+                                            } else {
+                                                MaterialTheme.colorScheme.primaryContainer
+                                            }
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.Edit,
+                                                contentDescription = stringResource(R.string.reader_page_note),
+                                                tint = if (state.currentPageNote != null) {
+                                                    Color.Black
+                                                } else {
+                                                    MaterialTheme.colorScheme.onPrimaryContainer
+                                                }
+                                            )
+                                        }
                                     }
                                 }
                             }
@@ -373,7 +406,13 @@ fun PdfReaderScreen(
                             ) {
                                 Icon(
                                     imageVector = if (state.isFabExpanded) Icons.Default.Close else Icons.Default.Add,
-                                    contentDescription = if (state.isFabExpanded) "Close menu" else "Open menu"
+                                    contentDescription = stringResource(
+                                        if (state.isFabExpanded) {
+                                            R.string.reader_close_menu
+                                        } else {
+                                            R.string.reader_open_menu
+                                        }
+                                    )
                                 )
                             }
                         }
@@ -386,25 +425,27 @@ fun PdfReaderScreen(
                 }
             }
 
-            Box(modifier = Modifier.align(Alignment.TopCenter)) {
-                PdfSearchOverlay(
-                    isSearchOpen = state.isSearchOpen,
-                    searchQuery = state.searchQuery,
-                    searchResults = state.searchResults,
-                    isSearching = state.isSearching,
-                    onQueryChange = { onAction(PdfReaderAction.UpdateSearchQuery(it)) },
-                    onClose = { onAction(PdfReaderAction.CloseSearch) },
-                    onResultClick = { page ->
-                        interactiveState.pendingSearchQuery = state.searchQuery
-                        interactiveState.pendingSearchPage = page
-                        navigateToPage?.invoke(page)
-                        onAction(PdfReaderAction.SelectSearchResult(page))
-                    }
-                )
+            if (state.enableSearch) {
+                Box(modifier = Modifier.align(Alignment.TopCenter)) {
+                    PdfSearchOverlay(
+                        isSearchOpen = state.isSearchOpen,
+                        searchQuery = state.searchQuery,
+                        searchResults = state.searchResults,
+                        isSearching = state.isSearching,
+                        onQueryChange = { onAction(PdfReaderAction.UpdateSearchQuery(it)) },
+                        onClose = { onAction(PdfReaderAction.CloseSearch) },
+                        onResultClick = { page ->
+                            interactiveState.pendingSearchQuery = state.searchQuery
+                            interactiveState.pendingSearchPage = page
+                            navigateToPage?.invoke(page)
+                            onAction(PdfReaderAction.SelectSearchResult(page))
+                        }
+                    )
+                }
             }
         }
 
-        if (showNoteDialog) {
+        if (showNoteDialog && state.enableAnnotations) {
             PageNoteBottomSheet(
                 existingNote = state.currentPageNote?.noteText,
                 onDismissRequest = { showNoteDialog = false },

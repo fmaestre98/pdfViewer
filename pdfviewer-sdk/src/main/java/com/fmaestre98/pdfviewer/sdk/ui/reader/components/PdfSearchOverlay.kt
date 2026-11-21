@@ -47,7 +47,9 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.withStyle
+import com.fmaestre98.pdfviewer.sdk.R
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.TextRange
@@ -57,7 +59,7 @@ import androidx.compose.runtime.getValue
 import com.fmaestre98.pdfviewer.sdk.core.text.SearchResult
 
 @Composable
-fun PdfSearchOverlay(
+internal fun PdfSearchOverlay(
     isSearchOpen: Boolean,
     searchQuery: String,
     searchResults: List<SearchResult>,
@@ -116,18 +118,27 @@ fun PdfSearchOverlay(
                         .fillMaxWidth()
                         .padding(8.dp)
                         .focusRequester(focusRequester),
-                    placeholder = { Text("Search in document...") },
+                    placeholder = { Text(stringResource(R.string.search_placeholder)) },
                     leadingIcon = {
-                        Icon(imageVector = Icons.Default.Search, contentDescription = "Search")
+                        Icon(
+                            imageVector = Icons.Default.Search,
+                            contentDescription = stringResource(R.string.search_content_description)
+                        )
                     },
                     trailingIcon = {
                         if (searchQuery.isNotEmpty()) {
                             IconButton(onClick = { onQueryChange("") }) {
-                                Icon(imageVector = Icons.Default.Close, contentDescription = "Clear")
+                                Icon(
+                                    imageVector = Icons.Default.Close,
+                                    contentDescription = stringResource(R.string.search_clear)
+                                )
                             }
                         } else {
                             IconButton(onClick = onClose) {
-                                Icon(imageVector = Icons.Default.Close, contentDescription = "Close search")
+                                Icon(
+                                    imageVector = Icons.Default.Close,
+                                    contentDescription = stringResource(R.string.search_close)
+                                )
                             }
                         }
                     },
@@ -147,7 +158,11 @@ fun PdfSearchOverlay(
                     }
                 } else if (searchQuery.isNotEmpty() && searchResults.isEmpty() && !isSearching) {
                     Box(modifier = Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
-                        Text("No results found", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(
+                            stringResource(R.string.search_no_results),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
                 } else {
                     LazyColumn(
@@ -181,7 +196,7 @@ fun PdfSearchOverlay(
 }
 
 @Composable
-fun SearchResultItem(result: SearchResult, query: String, onClick: () -> Unit) {
+internal fun SearchResultItem(result: SearchResult, query: String, onClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()

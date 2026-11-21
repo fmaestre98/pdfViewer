@@ -6,7 +6,7 @@ import androidx.compose.ui.geometry.Offset
  * GestureHandler: Pure gesture detector that delegates to PdfInteractionListener.
  * Separates gesture detection from business logic.
  */
-class GestureHandler(
+internal class GestureHandler(
     private val listener: PdfInteractionListener
 ) {
     /**
@@ -39,10 +39,9 @@ class GestureHandler(
 
     /**
      * Updates selection handle position.
-     * @param sourcePage The page index whose overlay is generating this event (the y coordinate origin).
      */
-    fun updateSelectionHandle(isStart: Boolean, x: Float, y: Float, viewWidth: Int, viewHeight: Int, sourcePage: Int = -1) {
-        listener.onSelectionHandleDragged(isStart, x, y, viewWidth, viewHeight, sourcePage)
+    fun updateSelectionHandle(isStart: Boolean, x: Float, y: Float, viewWidth: Int, viewHeight: Int) {
+        listener.onSelectionHandleDragged(isStart, x, y, viewWidth, viewHeight)
     }
     
     /**

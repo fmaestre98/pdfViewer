@@ -20,12 +20,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import com.fmaestre98.pdfviewer.sdk.R
 import com.fmaestre98.pdfviewer.sdk.core.model.PageModel
 import com.fmaestre98.pdfviewer.sdk.core.model.PdfViewerConstants
 import com.fmaestre98.pdfviewer.sdk.core.model.PdfViewerOrientation
@@ -50,7 +52,7 @@ import java.io.File
  */
 @OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
-fun ComposePdfViewer(
+internal fun ComposePdfViewer(
     pdfFile: File,
     modifier: Modifier = Modifier,
     initialPage: Int = 0,
@@ -110,9 +112,9 @@ fun ComposePdfViewer(
                 contentAlignment = Alignment.Center
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("Error loading PDF")
+                    Text(stringResource(R.string.reader_loading_error))
                     Text(
-                        text = loaderState.error?.message ?: "Unknown error",
+                        text = loaderState.error?.message ?: stringResource(R.string.reader_error_file),
                         modifier = Modifier.padding(16.dp)
                     )
                 }

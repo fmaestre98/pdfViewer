@@ -59,7 +59,7 @@ private val DarkReaderColorMatrix = androidx.compose.ui.graphics.ColorMatrix(
  */
 @OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
-fun PdfPageItem(
+internal fun PdfPageItem(
     pageIndex: Int,
     pageRenderer: PdfPageRenderer?,
     optimalSize: Pair<Int, Int>?,

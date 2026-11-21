@@ -20,7 +20,7 @@ import com.fmaestre98.pdfviewer.sdk.core.model.PageModel
  * Only renders when BuildConfig.DEBUG is true.
  */
 @Composable
-fun PdfDebugOverlay(
+internal fun PdfDebugOverlay(
     pageModel: PageModel?,
     pageWidth: Int,
     pageHeight: Int,

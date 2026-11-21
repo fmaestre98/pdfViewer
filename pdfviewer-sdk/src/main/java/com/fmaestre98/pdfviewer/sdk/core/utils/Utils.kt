@@ -5,7 +5,7 @@ import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
 
-fun getOrCopyLocalFile(context: Context, assetPath: String): File? {
+internal fun getOrCopyLocalFile(context: Context, assetPath: String): File? {
     val localDir = File(context.filesDir, "pdfs")
     if (!localDir.exists()) {
         localDir.mkdirs()

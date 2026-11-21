@@ -22,7 +22,7 @@ import kotlin.math.abs
  * This is critical for the GestureOrchestrator to properly reset its state
  * and avoid blocking other gestures after a transform completes.
  */
-suspend fun PointerInputScope.detectTransformGesturesWithLifecycle(
+internal suspend fun PointerInputScope.detectTransformGesturesWithLifecycle(
     panZoomLock: Boolean = false,
     onGestureStart: () -> Unit = {},
     onGesture: (centroid: Offset, pan: Offset, zoom: Float, rotation: Float) -> Unit,

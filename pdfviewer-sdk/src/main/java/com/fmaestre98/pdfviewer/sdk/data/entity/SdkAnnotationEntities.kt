@@ -9,7 +9,7 @@ import androidx.room.PrimaryKey
     tableName = SdkBookmarkEntity.TABLE_NAME,
     indices = [Index(value = [SdkBookmarkEntity.FIELD_BOOK_URI])]
 )
-data class SdkBookmarkEntity(
+internal data class SdkBookmarkEntity(
     @PrimaryKey(autoGenerate = true)
     @ColumnInfo(name = FIELD_ID)
     val id: Long = 0,
@@ -40,7 +40,7 @@ data class SdkBookmarkEntity(
         Index(value = [SdkHighlightEntity.FIELD_GROUP_ID])
     ]
 )
-data class SdkHighlightEntity(
+internal data class SdkHighlightEntity(
     @PrimaryKey(autoGenerate = true)
     @ColumnInfo(name = FIELD_ID)
     val id: Long = 0,
@@ -98,7 +98,7 @@ data class SdkHighlightEntity(
         Index(value = [SdkPageNoteEntity.FIELD_BOOK_URI, SdkPageNoteEntity.FIELD_PAGE], unique = true)
     ]
 )
-data class SdkPageNoteEntity(
+internal data class SdkPageNoteEntity(
     @PrimaryKey(autoGenerate = true)
     @ColumnInfo(name = FIELD_ID)
     val id: Long = 0,
@@ -126,6 +126,27 @@ data class SdkPageNoteEntity(
         const val FIELD_PAGE = "page"
         const val FIELD_NOTE_TEXT = "note_text"
         const val FIELD_COLOR = "color"
+        const val FIELD_UPDATED_AT = "updated_at"
+    }
+}
+
+@Entity(tableName = SdkReadingProgressEntity.TABLE_NAME)
+internal data class SdkReadingProgressEntity(
+    @PrimaryKey
+    @ColumnInfo(name = FIELD_DOCUMENT_ID)
+    val documentId: String,
+
+    @ColumnInfo(name = FIELD_LAST_READ_PAGE)
+    val lastReadPage: Int,
+
+    @ColumnInfo(name = FIELD_UPDATED_AT)
+    val updatedAt: Long = System.currentTimeMillis()
+) {
+    companion object {
+        const val TABLE_NAME = "sdk_reading_progress"
+
+        const val FIELD_DOCUMENT_ID = "document_id"
+        const val FIELD_LAST_READ_PAGE = "last_read_page"
         const val FIELD_UPDATED_AT = "updated_at"
     }
 }

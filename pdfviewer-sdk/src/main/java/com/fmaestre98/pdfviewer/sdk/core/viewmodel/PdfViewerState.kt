@@ -11,7 +11,7 @@ import com.fmaestre98.pdfviewer.sdk.core.rendering.PdfRendererManager
  * @deprecated This class is maintained for backward compatibility. New code should use
  * the individual state classes (PdfLoaderState, PdfNavigationState, PdfInteractiveState) directly.
  */
-open class PdfViewerState {
+internal open class PdfViewerState {
     // Compose the three focused state classes
     val loaderState = PdfLoaderState()
     val navigationState = PdfNavigationState()

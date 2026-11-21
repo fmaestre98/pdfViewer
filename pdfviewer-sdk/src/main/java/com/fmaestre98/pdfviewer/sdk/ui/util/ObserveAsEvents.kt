@@ -12,7 +12,7 @@ import kotlinx.coroutines.flow.Flow
  * Events are only delivered when the lifecycle is at least STARTED.
  */
 @Composable
-fun <T> ObserveAsEvents(
+internal fun <T> ObserveAsEvents(
     flow: Flow<T>,
     onEvent: (T) -> Unit
 ) {

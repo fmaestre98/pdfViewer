@@ -13,7 +13,7 @@ import androidx.compose.ui.geometry.Offset
  * 3. PANNING
  * 4. NONE
  */
-class GestureOrchestrator {
+internal class GestureOrchestrator {
     // Enum representing mutually exclusive gesture states
     enum class ActiveGesture {
         NONE,
@@ -95,9 +95,8 @@ class GestureOrchestrator {
      * - Any gesture is currently active (zoom/pan/handle drag)
      * - A handle drag ended very recently (within grace period)
      */
-    fun shouldDismissSelectionOnTap(interactiveState: PdfInteractiveState? = null): Boolean {
+    fun shouldDismissSelectionOnTap(): Boolean {
         if (currentGesture != ActiveGesture.NONE) return false
-        if (interactiveState?.isDraggingHandle == true) return false
         
         // Don't dismiss if a handle drag ended very recently
         val elapsed = SystemClock.elapsedRealtime() - handleDragEndedAtMs

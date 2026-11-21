@@ -38,7 +38,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.fmaestre98.pdfviewer.R
 import com.fmaestre98.pdfviewer.models.Book
 import com.fmaestre98.pdfviewer.ui.util.ObserveAsEvents
-import com.fmaestre98.pdfviewer.pdfViewer.rendering.PdfRendererManager
+import com.fmaestre98.pdfviewer.sdk.core.rendering.PdfRendererManager
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext

@@ -10,7 +10,7 @@ import androidx.compose.runtime.setValue
  * State class for managing PDF loading, errors, and renderer manager.
  * Handles the lifecycle of PDF file loading and rendering resources.
  */
-class PdfLoaderState {
+internal class PdfLoaderState {
     var isLoading by mutableStateOf(false)
 
     var error: Throwable? by mutableStateOf(null)

@@ -3,6 +3,7 @@ package com.fmaestre98.pdfviewer.repository
 import kotlinx.coroutines.flow.Flow
 import com.fmaestre98.pdfviewer.room.HighlightDao
 import com.fmaestre98.pdfviewer.room.entity.HighlightEntity
+import com.fmaestre98.pdfviewer.sdk.storage.NormalizedRect
 import javax.inject.Inject
 
 /**
@@ -17,14 +18,6 @@ data class HighlightData(
     val endX: Float,
     val endY: Float,
     val snippet: String = ""
-)
-
-/** A single normalized bounding rect for a highlight selection. */
-data class NormalizedRect(
-    val startX: Float,
-    val startY: Float,
-    val endX: Float,
-    val endY: Float
 )
 
 interface HighlightRepository {

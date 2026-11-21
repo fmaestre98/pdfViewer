@@ -75,7 +75,7 @@ import com.fmaestre98.pdfviewer.sdk.R
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PageThumbnailDrawer(
+internal fun PageThumbnailDrawer(
     isOpen: Boolean,
     onDismiss: () -> Unit,
     pageRenderer: PdfPageRenderer?,

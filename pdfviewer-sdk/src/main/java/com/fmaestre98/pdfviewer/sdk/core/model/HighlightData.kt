@@ -1,6 +1,6 @@
 package com.fmaestre98.pdfviewer.sdk.core.model
 
-data class HighlightData(
+internal data class HighlightData(
     val groupId: String,
     val color: String,
     val startX: Float,

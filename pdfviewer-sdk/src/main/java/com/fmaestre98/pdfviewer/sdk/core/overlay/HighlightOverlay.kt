@@ -15,7 +15,7 @@ import kotlin.math.min
  * making highlights orientation-independent.
  */
 @Composable
-fun HighlightOverlay(
+internal fun HighlightOverlay(
     highlights: List<HighlightData>,
     pageWidth: Int,
     pageHeight: Int,
@@ -62,7 +62,7 @@ fun HighlightOverlay(
 /**
  * Parses a color string to a Compose Color with transparency for highlight rendering.
  */
-fun parseHighlightColor(colorString: String): Color {
+internal fun parseHighlightColor(colorString: String): Color {
     return try {
         val baseColor = Color(android.graphics.Color.parseColor(colorString))
         baseColor.copy(alpha = 0.35f)

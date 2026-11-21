@@ -8,7 +8,7 @@ import androidx.compose.runtime.setValue
  * State class for managing PDF page navigation.
  * Handles current page index and page count tracking.
  */
-class PdfNavigationState {
+internal class PdfNavigationState {
     var currentPageIndex by mutableIntStateOf(0)
         private set
 

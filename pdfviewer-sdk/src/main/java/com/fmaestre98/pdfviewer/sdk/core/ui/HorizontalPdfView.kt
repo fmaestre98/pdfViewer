@@ -65,7 +65,7 @@ import kotlin.math.max
  */
 @OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
-fun HorizontalPdfView(
+internal fun HorizontalPdfView(
     viewModel: PdfViewerViewModel,
     loaderState: PdfLoaderState,
     navigationState: PdfNavigationState,
@@ -192,14 +192,10 @@ fun HorizontalPdfView(
                     // Replace previous selection with new one (per user preference)
                     interactiveState.activateTextSelection(word, navigationState.currentPageIndex)
                     onWordSelected?.invoke(word)
-                } else if (interactiveState.isTextSelectionActive) {
-                    interactiveState.deactivateTextSelection()
-                    onSelectionCleared?.invoke()
                 }
             }
 
-
-            override fun onSelectionHandleDragged(isStart: Boolean, x: Float, y: Float, viewWidth: Int, viewHeight: Int, sourcePage: Int) {
+            override fun onSelectionHandleDragged(isStart: Boolean, x: Float, y: Float, viewWidth: Int, viewHeight: Int) {
                 val pageModel =  interactiveState.getPageModel(navigationState.currentPageIndex) ?: return
                 interactiveState.isDraggingHandle = true // Ocultar menú
 
@@ -435,7 +431,6 @@ fun HorizontalPdfView(
                             pageHeight = optimalSize.second
                         )
                     }
-
 
                     // Debug overlay for word bounding boxes
                     if (optimalSize != null && navigationState.currentPageIndex == pageIndex) {

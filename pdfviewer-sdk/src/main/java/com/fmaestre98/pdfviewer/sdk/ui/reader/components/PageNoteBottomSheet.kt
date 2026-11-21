@@ -21,11 +21,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.fmaestre98.pdfviewer.sdk.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PageNoteBottomSheet(
+internal fun PageNoteBottomSheet(
     existingNote: String?,
     onDismissRequest: () -> Unit,
     onSave: (String) -> Unit,
@@ -44,7 +46,9 @@ fun PageNoteBottomSheet(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
-                text = if (existingNote != null) "Edit Note" else "Add Note",
+                text = stringResource(
+                    if (existingNote != null) R.string.note_edit_title else R.string.note_add_title
+                ),
                 style = MaterialTheme.typography.titleLarge
             )
             Spacer(modifier = Modifier.height(16.dp))
@@ -52,7 +56,7 @@ fun PageNoteBottomSheet(
                 value = text,
                 onValueChange = { text = it },
                 modifier = Modifier.fillMaxWidth(),
-                label = { Text("Write your note here") },
+                label = { Text(stringResource(R.string.note_hint)) },
                 minLines = 3
             )
             Spacer(modifier = Modifier.height(24.dp))
@@ -61,19 +65,19 @@ fun PageNoteBottomSheet(
             ) {
                 if (existingNote != null) {
                     TextButton(onClick = onDelete) {
-                        Text("Eliminar")
+                        Text(stringResource(R.string.note_delete))
                     }
                 }
                 Spacer(modifier = Modifier.weight(1f))
                 TextButton(onClick = onDismissRequest) {
-                    Text("Cancelar")
+                    Text(stringResource(R.string.note_cancel))
                 }
                 Spacer(modifier = Modifier.width(8.dp))
                 Button(
                     onClick = { onSave(text) },
                     enabled = text.isNotBlank()
                 ) {
-                    Text("Guardar")
+                    Text(stringResource(R.string.note_save))
                 }
             }
         }

@@ -7,24 +7,28 @@ import androidx.room.RoomDatabase
 import com.fmaestre98.pdfviewer.sdk.data.dao.SdkBookmarkDao
 import com.fmaestre98.pdfviewer.sdk.data.dao.SdkHighlightDao
 import com.fmaestre98.pdfviewer.sdk.data.dao.SdkPageNoteDao
+import com.fmaestre98.pdfviewer.sdk.data.dao.SdkReadingProgressDao
 import com.fmaestre98.pdfviewer.sdk.data.entity.SdkBookmarkEntity
 import com.fmaestre98.pdfviewer.sdk.data.entity.SdkHighlightEntity
 import com.fmaestre98.pdfviewer.sdk.data.entity.SdkPageNoteEntity
+import com.fmaestre98.pdfviewer.sdk.data.entity.SdkReadingProgressEntity
 
 @Database(
     entities = [
         SdkBookmarkEntity::class,
         SdkHighlightEntity::class,
-        SdkPageNoteEntity::class
+        SdkPageNoteEntity::class,
+        SdkReadingProgressEntity::class
     ],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
-abstract class PdfSdkDatabase : RoomDatabase() {
+internal abstract class PdfSdkDatabase : RoomDatabase() {
 
     abstract fun bookmarkDao(): SdkBookmarkDao
     abstract fun highlightDao(): SdkHighlightDao
     abstract fun pageNoteDao(): SdkPageNoteDao
+    abstract fun readingProgressDao(): SdkReadingProgressDao
 
     companion object {
         @Volatile
@@ -36,7 +40,7 @@ abstract class PdfSdkDatabase : RoomDatabase() {
                     context.applicationContext,
                     PdfSdkDatabase::class.java,
                     "pdf_sdk_internal.db"
-                ).fallbackToDestructiveMigration().build()
+                ).fallbackToDestructiveMigration(dropAllTables = true).build()
                 INSTANCE = instance
                 instance
             }

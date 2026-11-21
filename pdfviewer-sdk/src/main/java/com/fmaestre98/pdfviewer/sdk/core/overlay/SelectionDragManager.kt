@@ -4,7 +4,7 @@ import android.os.SystemClock
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
-class SelectionDragManager(private val lookupIntervalMs: Long = 8L) {
+internal class SelectionDragManager(private val lookupIntervalMs: Long = 8L) {
     private var lastLookup = 0L
     private val mutex = Mutex()
 

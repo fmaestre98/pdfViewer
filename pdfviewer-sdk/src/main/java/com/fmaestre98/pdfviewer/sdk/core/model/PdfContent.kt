@@ -3,7 +3,7 @@ package com.fmaestre98.pdfviewer.sdk.core.model
 import android.graphics.PointF
 import android.graphics.RectF
 
-class PdfLine(
+internal class PdfLine(
     val id: Int,
     val text: String,
     val position: PointF,
@@ -14,7 +14,7 @@ class PdfLine(
     val rect: RectF = RectF(),
 )
 
-class PdfWord(
+internal class PdfWord(
     val id: Int,
     val lineId: Int,
     val text: String,
@@ -26,7 +26,7 @@ class PdfWord(
     val rect: RectF = RectF(),
 )
 
-data class PdfChar(
+internal data class PdfChar(
     val id: Int,
     val lineId: Int,
     val wordId: Int,
@@ -42,14 +42,14 @@ data class PdfChar(
     val rect: RectF = RectF(),
 )
 
-class Size(var width: Float = 0f, var height: Float = 0f) {
+internal class Size(var width: Float = 0f, var height: Float = 0f) {
     fun set(width: Float, height: Float) {
         this.width = width
         this.height = height
     }
 }
 
-data class Coordinates(
+internal data class Coordinates(
     var startX: Double,
     var startY: Double,
     var endX: Double,

@@ -1,16 +1,13 @@
 package com.fmaestre98.pdfviewer.sdk.ui.reader
 
-import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.fmaestre98.pdfviewer.sdk.R
 import com.fmaestre98.pdfviewer.sdk.core.model.PdfViewerOrientation
 import com.fmaestre98.pdfviewer.sdk.core.text.PdfSearchManager
-import com.fmaestre98.pdfviewer.sdk.data.entity.SdkPageNoteEntity
-import com.fmaestre98.pdfviewer.sdk.data.repository.SdkBookmarkRepository
-import com.fmaestre98.pdfviewer.sdk.data.repository.SdkHighlightRepository
-import com.fmaestre98.pdfviewer.sdk.data.repository.SdkPageNoteRepository
+import com.fmaestre98.pdfviewer.sdk.model.PdfViewerConfig
+import com.fmaestre98.pdfviewer.sdk.storage.PdfViewerStorage
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
@@ -23,23 +20,22 @@ import kotlinx.coroutines.launch
 import java.io.File
 import java.util.UUID
 
-class PdfReaderViewModel(
-    val documentId: String,
-    val filePath: String?,
-    val initialPage: Int,
-    initialOrientation: PdfViewerOrientation,
-    private val bookmarkRepository: SdkBookmarkRepository,
-    private val highlightRepository: SdkHighlightRepository,
-    private val pageNoteRepository: SdkPageNoteRepository
+internal class PdfReaderViewModel(
+    private val documentId: String,
+    private val filePath: String?,
+    private val config: PdfViewerConfig,
+    private val storage: PdfViewerStorage
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(
         PdfReaderState(
             uri = documentId,
             filePath = filePath,
-            initialPage = initialPage,
-            currentPage = initialPage,
-            orientation = initialOrientation
+            orientation = config.initialOrientation,
+            enableAnnotations = config.enableAnnotations,
+            enableBookmarks = config.enableBookmarks,
+            enableSearch = config.enableSearch,
+            enableThumbnailDrawer = config.enableThumbnailDrawer
         )
     )
     val state = _state.asStateFlow()
@@ -51,22 +47,25 @@ class PdfReaderViewModel(
     private var searchJob: Job? = null
 
     init {
-        loadAnnotationsData()
+        loadDocumentData()
     }
 
-    private fun loadAnnotationsData() {
+    private fun loadDocumentData() {
         viewModelScope.launch {
             try {
-                val bookmarks = bookmarkRepository.getAllBookmarksForBook(documentId)
-                val bookmarkedPages = bookmarks.map { it.page }.toSet()
-                val highlightsMap = highlightRepository.getHighlightsGroupedByPage(documentId)
-                val note = pageNoteRepository.getNoteForPage(documentId, initialPage)
+                val lastReadPage = storage.getLastReadPage(documentId) ?: 0
+                val targetPage = config.initialPage ?: lastReadPage
+                val bookmarkedPages = storage.getBookmarkedPages(documentId)
+                val highlightsMap = storage.getHighlightsByPage(documentId)
+                val note = storage.getPageNote(documentId, targetPage)
 
                 _state.update {
                     it.copy(
                         isLoading = false,
+                        initialPage = targetPage,
+                        currentPage = targetPage,
                         bookmarkedPages = bookmarkedPages,
-                        isCurrentPageBookmarked = bookmarkedPages.contains(initialPage),
+                        isCurrentPageBookmarked = bookmarkedPages.contains(targetPage),
                         highlights = highlightsMap,
                         currentPageNote = note,
                         error = null
@@ -83,8 +82,9 @@ class PdfReaderViewModel(
         when (action) {
             is PdfReaderAction.OnPageChanged -> {
                 viewModelScope.launch {
-                    val isBookmarked = bookmarkRepository.isPageBookmarked(documentId, action.pageIndex)
-                    val note = pageNoteRepository.getNoteForPage(documentId, action.pageIndex)
+                    storage.saveLastReadPage(documentId, action.pageIndex)
+                    val isBookmarked = storage.isPageBookmarked(documentId, action.pageIndex)
+                    val note = storage.getPageNote(documentId, action.pageIndex)
                     _state.update {
                         it.copy(
                             currentPage = action.pageIndex,
@@ -122,7 +122,7 @@ class PdfReaderViewModel(
             PdfReaderAction.ToggleBookmark -> {
                 val currentPage = _state.value.currentPage
                 viewModelScope.launch {
-                    val newBookmarkedStatus = bookmarkRepository.toggleBookmark(documentId, currentPage)
+                    val newBookmarkedStatus = storage.toggleBookmark(documentId, currentPage)
                     _state.update { state ->
                         val newBookmarkedPages = if (newBookmarkedStatus) {
                             state.bookmarkedPages + currentPage
@@ -139,15 +139,15 @@ class PdfReaderViewModel(
             is PdfReaderAction.SavePageNote -> {
                 val page = _state.value.currentPage
                 viewModelScope.launch {
-                    pageNoteRepository.saveNote(documentId, page, action.text)
-                    val note = pageNoteRepository.getNoteForPage(documentId, page)
+                    storage.savePageNote(documentId, page, action.text)
+                    val note = storage.getPageNote(documentId, page)
                     _state.update { it.copy(currentPageNote = note) }
                 }
             }
             PdfReaderAction.DeletePageNote -> {
                 val page = _state.value.currentPage
                 viewModelScope.launch {
-                    pageNoteRepository.deleteNote(documentId, page)
+                    storage.deletePageNote(documentId, page)
                     _state.update { it.copy(currentPageNote = null) }
                 }
             }
@@ -155,15 +155,15 @@ class PdfReaderViewModel(
                 if (action.normalizedRects.isEmpty()) return
                 val groupId = UUID.randomUUID().toString()
                 viewModelScope.launch {
-                    highlightRepository.saveHighlights(
-                        bookUri = documentId,
+                    storage.saveHighlight(
+                        documentId = documentId,
                         page = action.page,
                         snippet = action.snippet,
                         color = action.color,
                         groupId = groupId,
-                        normalizedRects = action.normalizedRects
+                        rects = action.normalizedRects
                     )
-                    val highlightsMap = highlightRepository.getHighlightsGroupedByPage(documentId)
+                    val highlightsMap = storage.getHighlightsByPage(documentId)
                     _state.update { it.copy(highlights = highlightsMap) }
                 }
             }
@@ -177,10 +177,23 @@ class PdfReaderViewModel(
                 }
             }
             PdfReaderAction.CloseSearch -> {
-                _state.update { it.copy(isSearchOpen = false, searchQuery = "", searchResults = emptyList(), isSearching = false) }
+                _state.update {
+                    it.copy(
+                        isSearchOpen = false,
+                        searchQuery = "",
+                        searchResults = emptyList(),
+                        isSearching = false
+                    )
+                }
             }
             is PdfReaderAction.UpdateSearchQuery -> {
-                _state.update { it.copy(searchQuery = action.query, isSearching = action.query.isNotBlank(), searchResults = emptyList()) }
+                _state.update {
+                    it.copy(
+                        searchQuery = action.query,
+                        isSearching = action.query.isNotBlank(),
+                        searchResults = emptyList()
+                    )
+                }
                 searchJob?.cancel()
                 if (action.query.isNotBlank()) {
                     searchJob = viewModelScope.launch {
@@ -228,22 +241,16 @@ class PdfReaderViewModel(
     class Factory(
         private val documentId: String,
         private val filePath: String?,
-        private val initialPage: Int,
-        private val initialOrientation: PdfViewerOrientation,
-        private val bookmarkRepository: SdkBookmarkRepository,
-        private val highlightRepository: SdkHighlightRepository,
-        private val pageNoteRepository: SdkPageNoteRepository
+        private val config: PdfViewerConfig,
+        private val storage: PdfViewerStorage
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T {
             return PdfReaderViewModel(
                 documentId = documentId,
                 filePath = filePath,
-                initialPage = initialPage,
-                initialOrientation = initialOrientation,
-                bookmarkRepository = bookmarkRepository,
-                highlightRepository = highlightRepository,
-                pageNoteRepository = pageNoteRepository
+                config = config,
+                storage = storage
             ) as T
         }
     }

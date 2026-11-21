@@ -10,13 +10,13 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import java.io.File
 
-data class SearchResult(
+internal data class SearchResult(
     val pageIndex: Int,
     val snippet: String,
     val matchStartIndex: Int
 )
 
-class PdfSearchManager {
+internal class PdfSearchManager {
 
     /**
      * Searches for text within a PDF file and emits results progressively.

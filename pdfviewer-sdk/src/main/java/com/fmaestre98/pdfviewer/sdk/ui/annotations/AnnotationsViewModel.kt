@@ -3,81 +3,69 @@ package com.fmaestre98.pdfviewer.sdk.ui.annotations
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import com.fmaestre98.pdfviewer.sdk.data.dao.SdkBookmarkDao
-import com.fmaestre98.pdfviewer.sdk.data.dao.SdkHighlightDao
-import com.fmaestre98.pdfviewer.sdk.data.dao.SdkPageNoteDao
+import com.fmaestre98.pdfviewer.sdk.storage.PdfViewerStorage
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 class AnnotationsViewModel(
-    val documentId: String,
-    bookmarkDao: SdkBookmarkDao,
-    highlightDao: SdkHighlightDao,
-    pageNoteDao: SdkPageNoteDao
+    private val documentId: String,
+    private val storage: PdfViewerStorage
 ) : ViewModel() {
 
     private val _events = Channel<AnnotationsEvent>()
     val events = _events.receiveAsFlow()
 
-    val state: StateFlow<AnnotationsState> = combine(
-        bookmarkDao.getAllBookmarksFlow(),
-        highlightDao.getAllHighlightsFlow(),
-        pageNoteDao.getAllNotesFlow()
-    ) { bookmarks, highlights, notes ->
-        val filteredBookmarks = bookmarks.filter { it.bookUri == documentId }
-        val filteredHighlights = highlights.filter { it.bookUri == documentId }
-        val filteredNotes = notes.filter { it.bookUri == documentId }
+    val state: StateFlow<AnnotationsState> = storage.observeAnnotations(documentId)
+        .map { annotations ->
+            val highlightItems = annotations.highlights
+                .groupBy { it.groupId }
+                .values
+                .mapNotNull { group ->
+                    val first = group.firstOrNull() ?: return@mapNotNull null
+                    val combinedSnippet = group.map { it.snippet }.joinToString(" ")
+                    AnnotationItem.Highlight(
+                        id = "h_${first.groupId}",
+                        page = first.page,
+                        timestamp = first.updatedAt,
+                        snippet = combinedSnippet,
+                        color = first.color
+                    )
+                }
 
-        val highlightItems = filteredHighlights
-            .groupBy { it.groupId }
-            .values
-            .mapNotNull { group ->
-                val first = group.firstOrNull() ?: return@mapNotNull null
-                val combinedSnippet = group.map { it.snippet }.joinToString(" ")
-                AnnotationItem.Highlight(
-                    id = "h_${first.groupId}",
-                    page = first.page,
-                    timestamp = first.updatedAt,
-                    snippet = combinedSnippet,
-                    color = first.color
+            val noteItems = annotations.notes.map { note ->
+                AnnotationItem.PageNote(
+                    id = "n_${note.page}_${note.updatedAt}",
+                    page = note.page,
+                    timestamp = note.updatedAt,
+                    noteText = note.noteText,
+                    color = note.color
                 )
             }
 
-        val noteItems = filteredNotes.map { note ->
-            AnnotationItem.PageNote(
-                id = "n_${note.id}",
-                page = note.page,
-                timestamp = note.updatedAt,
-                noteText = note.noteText,
-                color = note.color
+            val bookmarkItems = annotations.bookmarks.map { bookmark ->
+                AnnotationItem.Bookmark(
+                    id = "b_${bookmark.page}_${bookmark.createdAt}",
+                    page = bookmark.page,
+                    timestamp = bookmark.createdAt
+                )
+            }
+
+            AnnotationsState(
+                isLoading = false,
+                items = (highlightItems + noteItems + bookmarkItems)
+                    .sortedByDescending { it.timestamp }
             )
         }
-
-        val bookmarkItems = filteredBookmarks.map { bookmark ->
-            AnnotationItem.Bookmark(
-                id = "b_${bookmark.id}",
-                page = bookmark.page,
-                timestamp = bookmark.createdAt
-            )
-        }
-
-        val allItems = (highlightItems + noteItems + bookmarkItems)
-            .sortedByDescending { it.timestamp }
-
-        AnnotationsState(
-            isLoading = false,
-            items = allItems
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = AnnotationsState(isLoading = true)
         )
-    }.stateIn(
-        scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(5000),
-        initialValue = AnnotationsState(isLoading = true)
-    )
 
     fun onAction(action: AnnotationsAction) {
         when (action) {
@@ -96,17 +84,13 @@ class AnnotationsViewModel(
 
     class Factory(
         private val documentId: String,
-        private val bookmarkDao: SdkBookmarkDao,
-        private val highlightDao: SdkHighlightDao,
-        private val pageNoteDao: SdkPageNoteDao
+        private val storage: PdfViewerStorage
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T {
             return AnnotationsViewModel(
                 documentId = documentId,
-                bookmarkDao = bookmarkDao,
-                highlightDao = highlightDao,
-                pageNoteDao = pageNoteDao
+                storage = storage
             ) as T
         }
     }

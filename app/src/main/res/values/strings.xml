@@ -16,12 +16,7 @@
     <string name="home_error_adding">Error adding PDF</string>
     <string name="home_error_loading">Error loading documents</string>
 
-    <!-- PDF reader -->
-    <string name="reader_error_file">Could not open file</string>
     <string name="reader_back">Back</string>
-    <string name="reader_page_indicator">%1$d / %2$d</string>
-    <string name="reader_orientation_vertical">Switch to vertical scrolling</string>
-    <string name="reader_orientation_horizontal">Switch to horizontal pagination</string>
 
     <!-- Annotations screen -->
     <string name="annotations_title">Annotations &amp; Bookmarks</string>

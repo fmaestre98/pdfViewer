@@ -14,7 +14,7 @@ import com.fmaestre98.pdfviewer.sdk.core.text.PdfTextStripper as CustomTextStrip
  * Extractor de texto y coordenadas usando PDFBox con tu CustomTextStripper.
  * Maneja la conversión de coordenadas del PDF a pantalla.
  */
-class PdfTextExtractor private constructor(
+internal class PdfTextExtractor private constructor(
     private val document: PDDocument,
     private val originalPageSize: Pair<Int, Int> // Tamaño original de la página del PDF
 ) : AutoCloseable {

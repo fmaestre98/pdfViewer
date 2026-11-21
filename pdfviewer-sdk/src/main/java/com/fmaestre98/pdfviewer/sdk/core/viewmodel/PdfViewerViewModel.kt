@@ -4,7 +4,22 @@ import android.content.Context
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-class PdfViewerViewModel : ViewModel() {
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import com.fmaestre98.pdfviewer.sdk.core.model.PageModel
+import com.fmaestre98.pdfviewer.sdk.core.text.TtsManager
+import com.fmaestre98.pdfviewer.sdk.core.rendering.PdfPageRenderer
+import com.fmaestre98.pdfviewer.sdk.core.rendering.PdfRendererManager
+import java.io.File
+
+/**
+ * ViewModel for managing PDF viewer business logic.
+ * Handles PDF loading, text extraction, page model loading, and TTS.
+ */
+internal class PdfViewerViewModel : ViewModel() {
     var loaderState by mutableStateOf(PdfLoaderState())
         private set
 
@@ -15,7 +30,6 @@ class PdfViewerViewModel : ViewModel() {
         private set
 
     private var pageRenderer: PdfPageRenderer? = null
-
 
     /**
      * Loads a PDF file and initializes the renderer.
@@ -63,6 +77,8 @@ class PdfViewerViewModel : ViewModel() {
                 interactiveState.selectTextByQuery(pendingQuery, pageIndex)
                 interactiveState.pendingSearchQuery = null
                 interactiveState.pendingSearchPage = -1
+            } else {
+                interactiveState.deactivateTextSelection()
             }
         }
     }
@@ -76,6 +92,13 @@ class PdfViewerViewModel : ViewModel() {
         verticalView: Boolean = false
     ) {
         println("my-logs called setCurrentPage pageIndex=$pageIndex optimalSize=$optimalSize")
+        // Deactivate text selection if page changes
+        if (navigationState.currentPageIndex != pageIndex && interactiveState.isTextSelectionActive) {
+            // Only deactivate if selection is on a different page
+            if (interactiveState.selectionPageIndex != pageIndex) {
+                interactiveState.deactivateTextSelection()
+            }
+        }
         
         // Stop TTS if active when changing pages
         if (interactiveState.isKaraokeMode && navigationState.currentPageIndex != pageIndex) {

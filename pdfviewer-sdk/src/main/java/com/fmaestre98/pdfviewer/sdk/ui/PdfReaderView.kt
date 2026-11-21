@@ -17,43 +17,51 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.fmaestre98.pdfviewer.sdk.R
 import com.fmaestre98.pdfviewer.sdk.core.viewmodel.PdfViewerViewModel
-import com.fmaestre98.pdfviewer.sdk.data.db.PdfSdkDatabase
-import com.fmaestre98.pdfviewer.sdk.data.repository.SdkBookmarkRepositoryImpl
-import com.fmaestre98.pdfviewer.sdk.data.repository.SdkHighlightRepositoryImpl
-import com.fmaestre98.pdfviewer.sdk.data.repository.SdkPageNoteRepositoryImpl
 import com.fmaestre98.pdfviewer.sdk.model.PdfSource
 import com.fmaestre98.pdfviewer.sdk.model.PdfViewerConfig
+import com.fmaestre98.pdfviewer.sdk.storage.PdfViewerStorage
+import com.fmaestre98.pdfviewer.sdk.storage.rememberDefaultPdfViewerStorage
 import com.fmaestre98.pdfviewer.sdk.ui.reader.PdfReaderEvent
 import com.fmaestre98.pdfviewer.sdk.ui.reader.PdfReaderScreen
 import com.fmaestre98.pdfviewer.sdk.ui.reader.PdfReaderViewModel
 import com.fmaestre98.pdfviewer.sdk.ui.util.ObserveAsEvents
+import com.tom_roush.pdfbox.android.PDFBoxResourceLoader
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
+import java.security.MessageDigest
 
 @Composable
 fun PdfReaderView(
     source: PdfSource,
     modifier: Modifier = Modifier,
+    documentId: String = source.getDocumentId(),
     config: PdfViewerConfig = PdfViewerConfig(),
-    onClose: () -> Unit = {},
-    onShare: ((Uri) -> Unit)? = null
+    storage: PdfViewerStorage = rememberDefaultPdfViewerStorage(),
+    onClose: () -> Unit = {}
 ) {
     val context = LocalContext.current
+
+    LaunchedEffect(Unit) {
+        ensurePdfBoxInitialized(context)
+    }
+
     var resolvedFilePath by remember(source) { mutableStateOf<String?>(null) }
     var isResolving by remember(source) { mutableStateOf(true) }
 
-    LaunchedEffect(source) {
+    LaunchedEffect(source, documentId) {
         isResolving = true
         withContext(Dispatchers.IO) {
             val path = when (source) {
                 is PdfSource.FromFile -> source.file.absolutePath
-                is PdfSource.FromUri -> resolveUriToFile(context, source.uri)?.absolutePath
+                is PdfSource.FromUri -> resolveUriToFile(context, source.uri, documentId)?.absolutePath
                 is PdfSource.FromAsset -> copyAssetToFile(context, source.assetPath)?.absolutePath
             }
             resolvedFilePath = path
@@ -71,27 +79,17 @@ fun PdfReaderView(
     val filePath = resolvedFilePath
     if (filePath == null) {
         Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text("No se pudo cargar el archivo PDF")
+            Text(stringResource(R.string.reader_error_file))
         }
         return
     }
 
-    val db = remember(context) { PdfSdkDatabase.getInstance(context) }
-    val bookmarkRepo = remember(db) { SdkBookmarkRepositoryImpl(db.bookmarkDao()) }
-    val highlightRepo = remember(db) { SdkHighlightRepositoryImpl(db.highlightDao()) }
-    val pageNoteRepo = remember(db) { SdkPageNoteRepositoryImpl(db.pageNoteDao()) }
-
-    val documentId = remember(source) { source.getDocumentId() }
-
-    val factory = remember(documentId, filePath, config, bookmarkRepo, highlightRepo, pageNoteRepo) {
+    val factory = remember(documentId, filePath, config, storage) {
         PdfReaderViewModel.Factory(
             documentId = documentId,
             filePath = filePath,
-            initialPage = config.initialPage,
-            initialOrientation = config.initialOrientation,
-            bookmarkRepository = bookmarkRepo,
-            highlightRepository = highlightRepo,
-            pageNoteRepository = pageNoteRepo
+            config = config,
+            storage = storage
         )
     }
 
@@ -117,24 +115,43 @@ fun PdfReaderView(
         state = state,
         snackbarHostState = snackbarHostState,
         pdfViewerViewModel = pdfViewerViewModel,
-        onAction = readerViewModel::onAction,
-        onClose = onClose
+        selectionHandleColor = config.colors.selectionHandle,
+        selectionHighlightColor = config.colors.selectionHighlight,
+        onAction = readerViewModel::onAction
     )
 }
 
-private fun resolveUriToFile(context: Context, uri: Uri): File? {
+private val pdfBoxInitLock = Any()
+
+@Volatile
+private var pdfBoxInitialized = false
+
+private fun ensurePdfBoxInitialized(context: Context) {
+    if (!pdfBoxInitialized) {
+        synchronized(pdfBoxInitLock) {
+            if (!pdfBoxInitialized) {
+                PDFBoxResourceLoader.init(context.applicationContext)
+                pdfBoxInitialized = true
+            }
+        }
+    }
+}
+
+private fun resolveUriToFile(context: Context, uri: Uri, documentId: String): File? {
     return try {
         if (uri.scheme == "file") {
             uri.path?.let { File(it) }
         } else {
-            val contentResolver = context.contentResolver
-            val tempFile = File(context.cacheDir, "temp_pdf_${System.currentTimeMillis()}.pdf")
-            contentResolver.openInputStream(uri)?.use { input ->
-                FileOutputStream(tempFile).use { output ->
-                    input.copyTo(output)
-                }
+            val cacheName = "pdf_${stableHash(documentId)}.pdf"
+            val cacheFile = File(context.cacheDir, cacheName)
+            if (!cacheFile.exists() || cacheFile.length() == 0L) {
+                context.contentResolver.openInputStream(uri)?.use { input ->
+                    FileOutputStream(cacheFile).use { output ->
+                        input.copyTo(output)
+                    }
+                } ?: return null
             }
-            tempFile
+            cacheFile
         }
     } catch (e: Exception) {
         e.printStackTrace()
@@ -144,10 +161,13 @@ private fun resolveUriToFile(context: Context, uri: Uri): File? {
 
 private fun copyAssetToFile(context: Context, assetPath: String): File? {
     return try {
-        val tempFile = File(context.cacheDir, "asset_pdf_${assetPath.replace("/", "_")}")
-        context.assets.open(assetPath).use { input ->
-            FileOutputStream(tempFile).use { output ->
-                input.copyTo(output)
+        val cacheName = "asset_pdf_${stableHash(assetPath)}.pdf"
+        val tempFile = File(context.cacheDir, cacheName)
+        if (!tempFile.exists() || tempFile.length() == 0L) {
+            context.assets.open(assetPath).use { input ->
+                FileOutputStream(tempFile).use { output ->
+                    input.copyTo(output)
+                }
             }
         }
         tempFile
@@ -155,4 +175,9 @@ private fun copyAssetToFile(context: Context, assetPath: String): File? {
         e.printStackTrace()
         null
     }
+}
+
+private fun stableHash(value: String): String {
+    val digest = MessageDigest.getInstance("SHA-256").digest(value.toByteArray())
+    return digest.take(16).joinToString("") { "%02x".format(it) }
 }

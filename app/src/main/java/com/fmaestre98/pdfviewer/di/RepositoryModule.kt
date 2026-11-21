@@ -12,6 +12,8 @@ import com.fmaestre98.pdfviewer.repository.PageNoteRepository
 import com.fmaestre98.pdfviewer.repository.PageNoteRepositoryImpl
 import com.fmaestre98.pdfviewer.repository.PDFRepository
 import com.fmaestre98.pdfviewer.repository.RoomPdfRepository
+import com.fmaestre98.pdfviewer.sdk.AppPdfViewerStorage
+import com.fmaestre98.pdfviewer.sdk.storage.PdfViewerStorage
 import javax.inject.Singleton
 
 @Module
@@ -33,4 +35,8 @@ abstract class RepositoryModule {
     @Binds
     @Singleton
     abstract fun bindPageNoteRepository(impl: PageNoteRepositoryImpl): PageNoteRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindPdfViewerStorage(impl: AppPdfViewerStorage): PdfViewerStorage
 }
