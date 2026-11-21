@@ -1,11 +1,26 @@
 *.iml
 .gradle
-/local.properties
 .DS_Store
-/build
-/captures
+build/
+captures/
 .externalNativeBuild
 .cxx
 local.properties
 .agent
 .idea/
+.kotlin/
+
+# IDE workspace files are machine-specific
+*.code-workspace
+
+# Compiled / packaged outputs
+*.apk
+*.ap_
+*.aab
+*.dex
+*.class
+*.hprof
+
+# Signing material
+*.jks
+*.keystore

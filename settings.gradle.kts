@@ -24,4 +24,5 @@ dependencyResolutionManagement {
 
 rootProject.name = "PdfViewer"
 include(":app")
+include(":pdfviewer-sdk")
  

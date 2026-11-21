@@ -94,11 +94,15 @@ class MainActivity : ComponentActivity() {
                                     defaultValue = null
                                 }
                             )
-                        ) {
-                            PdfReaderRoot(
-                                onNavigateBack = {
-                                    navController.popBackStack()
-                                }
+                        ) { backStackEntry ->
+                            val encodedUri = backStackEntry.arguments?.getString("encodedUri") ?: ""
+                            val initialPage = backStackEntry.arguments?.getString("initialPage")?.toIntOrNull() ?: 0
+                            val decodedUri = Uri.decode(encodedUri)
+
+                            com.fmaestre98.pdfviewer.sdk.ui.PdfReaderView(
+                                source = com.fmaestre98.pdfviewer.sdk.model.PdfSource.FromUri(Uri.parse(decodedUri)),
+                                config = com.fmaestre98.pdfviewer.sdk.model.PdfViewerConfig(initialPage = initialPage),
+                                onClose = { navController.popBackStack() }
                             )
                         }
                     }
