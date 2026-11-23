@@ -1,11 +1,18 @@
 package com.fmaestre98.pdfviewer.sdk.core.rendering
 
 import android.graphics.Bitmap
+import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -31,9 +38,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalDrawerSheet
-import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -85,8 +90,6 @@ internal fun PageThumbnailDrawer(
     onPageSelected: (Int) -> Unit,
     content: @Composable () -> Unit,
 ) {
-    val drawerState = rememberDrawerState(initialValue = androidx.compose.material3.DrawerValue.Closed)
-
     val density = LocalDensity.current
     val thumbnailWidth = with(density) { 200.dp.toPx().toInt() }
     val thumbnailHeight = with(density) { 300.dp.toPx().toInt() }
@@ -94,35 +97,49 @@ internal fun PageThumbnailDrawer(
         initialFirstVisibleItemIndex = currentPage.coerceIn(0, (pageCount - 1).coerceAtLeast(0))
     )
 
-    LaunchedEffect(isOpen) {
-        if (isOpen) {
-            if (currentPage in 0 until pageCount) {
-                listState.scrollToItem(currentPage)
-            }
-            drawerState.open()
-        } else {
-            drawerState.close()
-        }
-    }
-
-    LaunchedEffect(drawerState.currentValue) {
-        if (drawerState.currentValue == androidx.compose.material3.DrawerValue.Closed && isOpen) {
-            onDismiss()
-        }
-    }
-
-    // Ensure list stays positioned on current page when drawer opens or page changes
-    LaunchedEffect(drawerState.currentValue, currentPage) {
-        if (drawerState.currentValue == androidx.compose.material3.DrawerValue.Open && currentPage >= 0 && currentPage < pageCount) {
+    LaunchedEffect(isOpen, currentPage) {
+        if (isOpen && currentPage in 0 until pageCount) {
             listState.scrollToItem(currentPage)
         }
     }
 
-    ModalNavigationDrawer(
-        drawerState = drawerState,
-        drawerContent = {
+    BackHandler(enabled = isOpen, onBack = onDismiss)
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        content()
+
+        val dismissInteraction = remember { MutableInteractionSource() }
+        AnimatedVisibility(
+            visible = isOpen,
+            enter = fadeIn(),
+            exit = fadeOut()
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.32f))
+                    .clickable(
+                        interactionSource = dismissInteraction,
+                        indication = null,
+                        onClick = onDismiss
+                    )
+            )
+        }
+
+        AnimatedVisibility(
+            visible = isOpen,
+            enter = slideInHorizontally { -it },
+            exit = slideOutHorizontally { -it },
+            modifier = Modifier.align(Alignment.CenterStart)
+        ) {
             ModalDrawerSheet(
-                modifier = Modifier.width(300.dp),
+                modifier = Modifier
+                    .width(300.dp)
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = {}
+                    ),
                 drawerContainerColor = MaterialTheme.colorScheme.surfaceVariant
             ) {
                 Column(
@@ -214,8 +231,6 @@ internal fun PageThumbnailDrawer(
                 }
             }
         }
-    ) {
-        content()
     }
 }
 
